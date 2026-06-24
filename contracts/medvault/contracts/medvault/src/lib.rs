@@ -193,4 +193,19 @@ impl MedVaultContract {
             .temporary()
             .get(&DataKey::Token(token_id))
     }
+
+    pub fn revoke_access(env: Env, patient: Address, token_id: BytesN<32>) {
+        patient.require_auth();
+
+        let token: Option<AccessToken> = env
+            .storage()
+            .temporary()
+            .get(&DataKey::Token(token_id.clone()));
+
+        if let Some(t) = token {
+            if t.patient == patient {
+                env.storage().temporary().remove(&DataKey::Token(token_id));
+            }
+        }
+    }
 }

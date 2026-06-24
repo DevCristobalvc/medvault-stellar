@@ -176,3 +176,46 @@ fn test_get_token_info_nonexistent() {
     let info = client.get_token_info(&fake_token);
     assert!(info.is_none());
 }
+
+#[test]
+fn test_revoke_access() {
+    let (env, client) = setup();
+    let doctor = Address::generate(&env);
+    let patient = Address::generate(&env);
+
+    let doc_id = client.register_document(
+        &doctor, &patient,
+        &String::from_str(&env, "QmCID"),
+        &String::from_str(&env, "history"),
+    );
+
+    env.ledger().set_timestamp(1000);
+    let token_id = client.grant_access(&patient, &doctor, &doc_id, &9999);
+
+    assert!(client.verify_access(&token_id, &doctor));
+
+    client.revoke_access(&patient, &token_id);
+
+    assert!(!client.verify_access(&token_id, &doctor));
+}
+
+#[test]
+fn test_revoke_wrong_patient() {
+    let (env, client) = setup();
+    let doctor = Address::generate(&env);
+    let patient = Address::generate(&env);
+    let attacker = Address::generate(&env);
+
+    let doc_id = client.register_document(
+        &doctor, &patient,
+        &String::from_str(&env, "QmCID"),
+        &String::from_str(&env, "history"),
+    );
+
+    env.ledger().set_timestamp(1000);
+    let token_id = client.grant_access(&patient, &doctor, &doc_id, &9999);
+
+    client.revoke_access(&attacker, &token_id);
+
+    assert!(client.verify_access(&token_id, &doctor));
+}

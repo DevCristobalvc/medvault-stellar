@@ -187,4 +187,10 @@ impl MedVaultContract {
             .persistent()
             .get(&DataKey::Document(document_id))
     }
+
+    pub fn get_token_info(env: Env, token_id: BytesN<32>) -> Option<AccessToken> {
+        env.storage()
+            .temporary()
+            .get(&DataKey::Token(token_id))
+    }
 }

@@ -146,3 +146,33 @@ fn test_audit_log_empty() {
     let log = client.get_audit_log(&patient);
     assert_eq!(log.len(), 0);
 }
+
+#[test]
+fn test_get_token_info_valid() {
+    let (env, client) = setup();
+    let doctor = Address::generate(&env);
+    let patient = Address::generate(&env);
+
+    let doc_id = client.register_document(
+        &doctor, &patient,
+        &String::from_str(&env, "QmCID"),
+        &String::from_str(&env, "history"),
+    );
+
+    env.ledger().set_timestamp(1000);
+    let token_id = client.grant_access(&patient, &doctor, &doc_id, &9999);
+
+    let info = client.get_token_info(&token_id);
+    assert!(info.is_some());
+    let info = info.unwrap();
+    assert_eq!(info.doctor, doctor);
+    assert_eq!(info.document_id, doc_id);
+}
+
+#[test]
+fn test_get_token_info_nonexistent() {
+    let (env, client) = setup();
+    let fake_token: BytesN<32> = BytesN::from_array(&env, &[0u8; 32]);
+    let info = client.get_token_info(&fake_token);
+    assert!(info.is_none());
+}

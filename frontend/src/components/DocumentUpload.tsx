@@ -1,15 +1,17 @@
-import { useState } from 'react'
-import { Upload, FileText, Loader2, CheckCircle } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Upload, FileText, Loader2, CheckCircle, Paperclip, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import { generateKey, encryptFile, exportKey, encodePayload } from '@/lib/encryption'
 import { uploadEncryptedPayload } from '@/lib/ipfs'
 import { registerDocument } from '@/lib/stellar'
 
 type Step = 'idle' | 'encrypting' | 'uploading' | 'registering' | 'done'
+type InputMode = 'text' | 'file'
 
 const STEP_LABELS: Record<Step, string> = {
   idle: '',
@@ -19,29 +21,51 @@ const STEP_LABELS: Record<Step, string> = {
   done: 'Document registered',
 }
 
+const ACCEPTED_TYPES = '.txt,.pdf,.doc,.docx,.png,.jpg,.jpeg'
+
 interface DocumentUploadProps {
   onSuccess?: (documentId: string, encryptionKey: string) => void
 }
 
 export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
+  const [mode, setMode] = useState<InputMode>('text')
   const [content, setContent] = useState('')
+  const [file, setFile] = useState<File | null>(null)
   const [patientAddress, setPatientAddress] = useState('')
   const [docType, setDocType] = useState('clinical_history')
   const [step, setStep] = useState<Step>('idle')
   const [error, setError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const busy = step !== 'idle' && step !== 'done'
+  const canSubmit = !busy && patientAddress.trim() && (mode === 'text' ? content.trim() : !!file)
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] ?? null
+    setFile(f)
+    if (f && !docType) setDocType(f.name.split('.').pop() ?? 'document')
+  }
+
+  function clearFile() {
+    setFile(null)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  async function getDataBuffer(): Promise<ArrayBuffer> {
+    if (mode === 'file' && file) return file.arrayBuffer()
+    return new TextEncoder().encode(content).buffer as ArrayBuffer
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!content.trim() || !patientAddress.trim()) return
-
+    if (!canSubmit) return
     setError(null)
+
     try {
       setStep('encrypting')
       const key = await generateKey()
-      const encoder = new TextEncoder()
-      const { ciphertext, iv } = await encryptFile(encoder.encode(content).buffer, key)
+      const data = await getDataBuffer()
+      const { ciphertext, iv } = await encryptFile(data, key)
       const payload = encodePayload(ciphertext, iv)
       const keyB64 = await exportKey(key)
 
@@ -65,7 +89,11 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
         <CardContent className="flex flex-col items-center gap-3 py-10">
           <CheckCircle className="h-10 w-10 text-green-500" />
           <p className="text-sm font-medium">Document registered on Stellar</p>
-          <Button variant="outline" size="sm" onClick={() => { setStep('idle'); setContent('') }}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setStep('idle'); setContent(''); setFile(null) }}
+          >
             Upload another
           </Button>
         </CardContent>
@@ -106,22 +134,84 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="content">Clinical content</Label>
-            <Textarea
-              id="content"
-              rows={6}
-              placeholder="Write the clinical record here..."
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              disabled={busy}
-              className="resize-none text-sm"
-            />
+          <Separator />
+
+          <div className="flex gap-1 p-0.5 bg-muted rounded-lg">
+            {(['text', 'file'] as InputMode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => { setMode(m); setContent(''); clearFile() }}
+                disabled={busy}
+                className={`flex-1 rounded-md py-1.5 text-xs font-medium transition-colors ${
+                  mode === m
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {m === 'text' ? 'Write text' : 'Upload file'}
+              </button>
+            ))}
           </div>
+
+          {mode === 'text' ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="content">Clinical content</Label>
+              <Textarea
+                id="content"
+                rows={6}
+                placeholder="Write the clinical record here..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                disabled={busy}
+                className="resize-none text-sm"
+              />
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label>File</Label>
+              {file ? (
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5">
+                  <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm truncate flex-1">{file.name}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {(file.size / 1024).toFixed(0)} KB
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearFile}
+                    disabled={busy}
+                    className="ml-1 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={busy}
+                  className="w-full rounded-lg border-2 border-dashed border-border py-8 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors flex flex-col items-center gap-2"
+                >
+                  <Upload className="h-5 w-5" />
+                  <span>Click to select file</span>
+                  <span className="text-xs">{ACCEPTED_TYPES}</span>
+                </button>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept={ACCEPTED_TYPES}
+                onChange={handleFileChange}
+                disabled={busy}
+                className="hidden"
+              />
+            </div>
+          )}
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 
-          <Button type="submit" disabled={busy || !content.trim() || !patientAddress.trim()}>
+          <Button type="submit" disabled={!canSubmit}>
             {busy ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

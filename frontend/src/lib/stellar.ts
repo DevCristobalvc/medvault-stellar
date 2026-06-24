@@ -222,6 +222,32 @@ export async function getPatientDocuments(patientAddress: string): Promise<strin
   return raw.map((id) => bytesToHex(id))
 }
 
+export interface TokenInfo {
+  doctor: string
+  patient: string
+  documentId: string
+  expiresAt: number
+}
+
+export async function getTokenInfo(tokenId: string): Promise<TokenInfo | null> {
+  const tokenBytes = xdr.ScVal.scvBytes(hexToBytes(tokenId))
+  const retval = await readOnly('get_token_info', [tokenBytes])
+  const raw = scValToNative(retval) as {
+    doctor: string
+    patient: string
+    document_id: Uint8Array
+    expires_at: bigint
+  } | null
+
+  if (!raw) return null
+  return {
+    doctor: raw.doctor,
+    patient: raw.patient,
+    documentId: bytesToHex(raw.document_id),
+    expiresAt: Number(raw.expires_at),
+  }
+}
+
 export async function getDocument(documentId: string): Promise<Document | null> {
   const docIdBytes = xdr.ScVal.scvBytes(hexToBytes(documentId))
   const retval = await readOnly('get_document', [docIdBytes])

@@ -222,6 +222,18 @@ export async function getPatientDocuments(patientAddress: string): Promise<strin
   return raw.map((id) => bytesToHex(id))
 }
 
+export async function revokeAccess(tokenId: string, patientAddress: string): Promise<void> {
+  const patient = await getPublicKey()
+  if (patient !== patientAddress) throw new Error('Connected wallet does not match patient address')
+
+  const tokenBytes = xdr.ScVal.scvBytes(hexToBytes(tokenId))
+  await buildAndSubmit(
+    'revoke_access',
+    [new Address(patient).toScVal(), tokenBytes],
+    patient
+  )
+}
+
 export interface TokenInfo {
   doctor: string
   patient: string

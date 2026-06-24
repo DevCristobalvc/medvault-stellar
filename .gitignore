@@ -141,3 +141,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# sensitive local files
+WALLET_SEED.txt
+*.seed.txt

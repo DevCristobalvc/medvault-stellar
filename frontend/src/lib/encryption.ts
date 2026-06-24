@@ -14,8 +14,13 @@ export async function encryptFile(
   key: CryptoKey
 ): Promise<{ ciphertext: ArrayBuffer; iv: Uint8Array }> {
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
-  const ciphertext = await crypto.subtle.encrypt({ name: ALGORITHM, iv }, key, data)
-  return { ciphertext, iv }
+  const ivBuffer = iv.buffer.slice(0) as ArrayBuffer
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: ALGORITHM, iv: new Uint8Array(ivBuffer) },
+    key,
+    data
+  )
+  return { ciphertext, iv: new Uint8Array(ivBuffer) }
 }
 
 export async function decryptFile(
@@ -23,7 +28,8 @@ export async function decryptFile(
   iv: Uint8Array,
   key: CryptoKey
 ): Promise<ArrayBuffer> {
-  return crypto.subtle.decrypt({ name: ALGORITHM, iv }, key, ciphertext)
+  const ivBuffer = iv.buffer.slice(0) as ArrayBuffer
+  return crypto.subtle.decrypt({ name: ALGORITHM, iv: new Uint8Array(ivBuffer) }, key, ciphertext)
 }
 
 export async function exportKey(key: CryptoKey): Promise<string> {

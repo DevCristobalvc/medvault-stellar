@@ -15,13 +15,10 @@ export async function uploadEncryptedPayload(
   const blob = new Blob([payload], { type: 'application/octet-stream' })
   const file = new File([blob], 'record.enc', { type: 'application/octet-stream' })
 
-  const result = await pinata.upload.public.file(file).addMetadata({
-    name: `medvault-${metadata.patientAddress.slice(0, 8)}-${Date.now()}`,
-    keyValues: {
-      docType: metadata.docType,
-      patient: metadata.patientAddress,
-    },
-  })
+  const result = await pinata.upload.public
+    .file(file)
+    .name(`medvault-${metadata.patientAddress.slice(0, 8)}-${Date.now()}`)
+    .keyvalues({ docType: metadata.docType, patient: metadata.patientAddress })
 
   return result.cid
 }

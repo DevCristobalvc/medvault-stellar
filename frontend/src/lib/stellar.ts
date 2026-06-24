@@ -9,7 +9,7 @@ import {
   nativeToScVal,
   Address,
 } from '@stellar/stellar-sdk'
-import { getPublicKey, signTransaction, isConnected } from '@stellar/freighter-api'
+import { getAddress, signTransaction, isConnected, requestAccess } from '@stellar/freighter-api'
 
 const RPC_URL = import.meta.env.VITE_SOROBAN_RPC ?? 'https://soroban-testnet.stellar.org'
 const CONTRACT_ID = import.meta.env.VITE_CONTRACT_ID ?? ''
@@ -33,6 +33,26 @@ function server() {
   return new SorobanRpc.Server(RPC_URL)
 }
 
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2)
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+  }
+  return bytes
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+async function getPublicKey(): Promise<string> {
+  const result = await getAddress()
+  if (result.error) throw new Error(result.error.message)
+  return result.address
+}
+
 async function buildAndSubmit(
   method: string,
   args: xdr.ScVal[],
@@ -51,14 +71,16 @@ async function buildAndSubmit(
     .build()
 
   const prepared = await s.prepareTransaction(tx)
-  const { signedTxXdr } = await signTransaction(prepared.toXDR(), {
+  const signed = await signTransaction(prepared.toXDR(), {
     networkPassphrase: NETWORK_PASSPHRASE,
   })
 
-  const signed = TransactionBuilder.fromXDR(signedTxXdr, NETWORK_PASSPHRASE)
-  const result = await s.sendTransaction(signed)
+  if (signed.error) throw new Error(signed.error.message)
 
-  if (result.status === 'ERROR') throw new Error(`Transaction failed: ${result.errorResult}`)
+  const signedTx = TransactionBuilder.fromXDR(signed.signedTxXdr, NETWORK_PASSPHRASE)
+  const result = await s.sendTransaction(signedTx)
+
+  if (result.status === 'ERROR') throw new Error(`Transaction failed`)
 
   let getResult = await s.getTransaction(result.hash)
   let attempts = 0
@@ -98,8 +120,13 @@ async function readOnly(method: string, args: xdr.ScVal[]): Promise<xdr.ScVal> {
 }
 
 export async function walletConnected(): Promise<boolean> {
-  const connected = await isConnected()
-  return connected.isConnected
+  const conn = await isConnected()
+  return conn.isConnected
+}
+
+export async function connectWallet(): Promise<string> {
+  await requestAccess()
+  return getPublicKey()
 }
 
 export async function getWalletPublicKey(): Promise<string> {
@@ -124,7 +151,7 @@ export async function registerDocument(
     doctor
   )
 
-  return Buffer.from(scValToNative(retval) as Uint8Array).toString('hex')
+  return bytesToHex(new Uint8Array(scValToNative(retval) as ArrayBuffer))
 }
 
 export async function grantAccess(
@@ -134,7 +161,7 @@ export async function grantAccess(
 ): Promise<string> {
   const patient = await getPublicKey()
 
-  const docIdBytes = xdr.ScVal.scvBytes(Buffer.from(documentId, 'hex'))
+  const docIdBytes = xdr.ScVal.scvBytes(hexToBytes(documentId))
   const retval = await buildAndSubmit(
     'grant_access',
     [
@@ -146,11 +173,11 @@ export async function grantAccess(
     patient
   )
 
-  return Buffer.from(scValToNative(retval) as Uint8Array).toString('hex')
+  return bytesToHex(new Uint8Array(scValToNative(retval) as ArrayBuffer))
 }
 
 export async function verifyAccess(tokenId: string, doctorAddress: string): Promise<boolean> {
-  const tokenBytes = xdr.ScVal.scvBytes(Buffer.from(tokenId, 'hex'))
+  const tokenBytes = xdr.ScVal.scvBytes(hexToBytes(tokenId))
   const retval = await readOnly('verify_access', [
     tokenBytes,
     new Address(doctorAddress).toScVal(),
@@ -160,7 +187,7 @@ export async function verifyAccess(tokenId: string, doctorAddress: string): Prom
 
 export async function logAccess(tokenId: string, patientAddress: string): Promise<void> {
   const doctor = await getPublicKey()
-  const tokenBytes = xdr.ScVal.scvBytes(Buffer.from(tokenId, 'hex'))
+  const tokenBytes = xdr.ScVal.scvBytes(hexToBytes(tokenId))
 
   await buildAndSubmit(
     'log_access',
@@ -175,10 +202,14 @@ export async function logAccess(tokenId: string, patientAddress: string): Promis
 
 export async function getAuditLog(patientAddress: string): Promise<AccessEvent[]> {
   const retval = await readOnly('get_audit_log', [new Address(patientAddress).toScVal()])
-  const raw = scValToNative(retval) as Array<{ doctor: string; token_id: Uint8Array; accessed_at: bigint }>
+  const raw = scValToNative(retval) as Array<{
+    doctor: string
+    token_id: Uint8Array
+    accessed_at: bigint
+  }>
   return raw.map((e) => ({
     doctor: e.doctor,
-    tokenId: Buffer.from(e.token_id).toString('hex'),
+    tokenId: bytesToHex(e.token_id),
     accessedAt: Number(e.accessed_at),
   }))
 }
@@ -188,11 +219,11 @@ export async function getPatientDocuments(patientAddress: string): Promise<strin
     new Address(patientAddress).toScVal(),
   ])
   const raw = scValToNative(retval) as Uint8Array[]
-  return raw.map((id) => Buffer.from(id).toString('hex'))
+  return raw.map((id) => bytesToHex(id))
 }
 
 export async function getDocument(documentId: string): Promise<Document | null> {
-  const docIdBytes = xdr.ScVal.scvBytes(Buffer.from(documentId, 'hex'))
+  const docIdBytes = xdr.ScVal.scvBytes(hexToBytes(documentId))
   const retval = await readOnly('get_document', [docIdBytes])
   const raw = scValToNative(retval) as {
     doctor: string

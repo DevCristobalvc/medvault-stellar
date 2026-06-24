@@ -1,22 +1,32 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useWallet } from '@/hooks/useWallet'
 import { DoctorAccess } from '@/components/DoctorAccess'
 import { DocumentUpload } from '@/components/DocumentUpload'
 import { WalletConnect } from '@/components/WalletConnect'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Stethoscope, Key } from 'lucide-react'
+import { Stethoscope } from 'lucide-react'
+
+function readKeyFromHash(): string | null {
+  const hash = window.location.hash
+  if (!hash.startsWith('#key=')) return null
+  try {
+    return decodeURIComponent(hash.slice(5))
+  } catch {
+    return null
+  }
+}
 
 export function DoctorPage() {
   const { state } = useWallet()
   const [searchParams] = useSearchParams()
   const tokenId = searchParams.get('token')
+  const [encryptionKey] = useState<string | null>(readKeyFromHash)
 
-  const [encryptionKey, setEncryptionKey] = useState<string | null>(null)
-  const [keyInput, setKeyInput] = useState('')
+  useEffect(() => {
+    if (window.location.hash.startsWith('#key=')) {
+      history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
+  }, [])
 
   if (state.status !== 'connected') {
     return (
@@ -26,7 +36,9 @@ export function DoctorPage() {
         </div>
         <div>
           <h2 className="text-lg font-semibold">Doctor portal</h2>
-          <p className="text-sm text-muted-foreground mt-1">Connect your Freighter wallet to continue</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Connect your Freighter wallet to continue
+          </p>
         </div>
         <WalletConnect />
       </div>
@@ -36,36 +48,6 @@ export function DoctorPage() {
   if (tokenId) {
     return (
       <div className="flex flex-col gap-4 px-5 py-6 md:px-8 max-w-lg mx-auto">
-        {!encryptionKey && (
-          <Card className="shadow-none">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Key className="h-4 w-4" />
-                Encryption key
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <Label htmlFor="key" className="text-xs text-muted-foreground">
-                Paste the key you received from the patient
-              </Label>
-              <Input
-                id="key"
-                value={keyInput}
-                onChange={(e) => setKeyInput(e.target.value)}
-                placeholder="Base64 encryption key..."
-                className="font-mono text-xs"
-              />
-              <Button
-                size="sm"
-                disabled={!keyInput.trim()}
-                onClick={() => setEncryptionKey(keyInput.trim())}
-              >
-                Decrypt record
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
         <DoctorAccess
           tokenId={tokenId}
           doctorPublicKey={state.publicKey}

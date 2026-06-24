@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react'
-import { ShieldCheck, ShieldX, Loader2, FileText } from 'lucide-react'
+import { ShieldCheck, ShieldX, Loader2, FileText, Key } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { verifyAccess, logAccess, type Document } from '@/lib/stellar'
+import { verifyAccess, logAccess, getTokenInfo, getDocument, type Document } from '@/lib/stellar'
 import { downloadEncryptedPayload } from '@/lib/ipfs'
 import { importKey, decryptFile, decodePayload } from '@/lib/encryption'
 
 type AccessStatus =
   | { phase: 'verifying' }
   | { phase: 'invalid'; reason: string }
-  | { phase: 'needs_key' }
+  | { phase: 'needs_key'; tokenInfo: { documentId: string; patient: string } }
   | { phase: 'decrypting' }
   | { phase: 'ready'; content: string; doc: Document }
 
@@ -19,42 +21,47 @@ interface DoctorAccessProps {
   tokenId: string
   doctorPublicKey: string
   encryptionKey: string | null
-  onKeyRequired?: () => void
 }
 
-export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey, onKeyRequired }: DoctorAccessProps) {
+export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey }: DoctorAccessProps) {
   const [status, setStatus] = useState<AccessStatus>({ phase: 'verifying' })
+  const [manualKey, setManualKey] = useState('')
 
-  useEffect(() => {
-    verify()
-  }, [tokenId, doctorPublicKey])
+  useEffect(() => { verify() }, [tokenId, doctorPublicKey])
 
   useEffect(() => {
     if (status.phase === 'needs_key' && encryptionKey) {
-      decrypt(encryptionKey)
+      decrypt(encryptionKey, status.tokenInfo)
     }
   }, [encryptionKey, status.phase])
 
   async function verify() {
     setStatus({ phase: 'verifying' })
     try {
-      const valid = await verifyAccess(tokenId, doctorPublicKey)
-      if (!valid) {
+      const [valid, tokenInfo] = await Promise.all([
+        verifyAccess(tokenId, doctorPublicKey),
+        getTokenInfo(tokenId),
+      ])
+
+      if (!valid || !tokenInfo) {
         setStatus({ phase: 'invalid', reason: 'Access token is invalid or has expired.' })
         return
       }
-      setStatus({ phase: 'needs_key' })
-      onKeyRequired?.()
+
+      setStatus({ phase: 'needs_key', tokenInfo })
     } catch (e) {
       setStatus({ phase: 'invalid', reason: e instanceof Error ? e.message : 'Verification failed.' })
     }
   }
 
-  async function decrypt(keyB64: string) {
+  async function decrypt(
+    keyB64: string,
+    tokenInfo: { documentId: string; patient: string }
+  ) {
     setStatus({ phase: 'decrypting' })
     try {
-      const doc = await resolveDocument()
-      if (!doc) throw new Error('Document metadata not found')
+      const doc = await getDocument(tokenInfo.documentId)
+      if (!doc) throw new Error('Document not found on-chain')
 
       const payload = await downloadEncryptedPayload(doc.cid)
       const { ciphertext, iv } = decodePayload(payload)
@@ -62,16 +69,12 @@ export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey, onKeyReq
       const plaintext = await decryptFile(ciphertext, iv, key)
       const content = new TextDecoder().decode(plaintext)
 
-      await logAccess(tokenId, doc.patient)
+      await logAccess(tokenId, tokenInfo.patient)
 
       setStatus({ phase: 'ready', content, doc })
     } catch (e) {
       setStatus({ phase: 'invalid', reason: e instanceof Error ? e.message : 'Decryption failed.' })
     }
-  }
-
-  async function resolveDocument(): Promise<Document | null> {
-    return null
   }
 
   if (status.phase === 'verifying' || status.phase === 'decrypting') {
@@ -105,18 +108,51 @@ export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey, onKeyReq
   }
 
   if (status.phase === 'needs_key') {
+    const tokenInfo = status.tokenInfo
     return (
-      <div className="flex flex-col items-center gap-4 px-5 py-8">
-        <div className="rounded-full bg-green-50 p-4">
-          <ShieldCheck className="h-8 w-8 text-green-600" />
+      <div className="flex flex-col gap-4 px-5 py-6">
+        <div className="flex flex-col items-center gap-3 pb-2">
+          <div className="rounded-full bg-green-50 p-4">
+            <ShieldCheck className="h-8 w-8 text-green-600" />
+          </div>
+          <div className="text-center">
+            <p className="font-medium text-sm">Access verified on Stellar</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Waiting for encryption key to decrypt the record
+            </p>
+          </div>
+          <Badge className="bg-accent/20 text-accent-foreground border border-accent/30">
+            Token valid
+          </Badge>
         </div>
-        <div className="text-center">
-          <p className="font-medium text-sm">Access verified</p>
-          <p className="text-xs text-muted-foreground mt-1">Waiting for encryption key...</p>
-        </div>
-        <Badge className="bg-accent/20 text-accent-foreground border border-accent/30">
-          Token valid
-        </Badge>
+
+        <Card className="shadow-none">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Key className="h-4 w-4" />
+              Encryption key
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <Label htmlFor="key" className="text-xs text-muted-foreground">
+              Paste the key shared by the patient (if not included in the QR)
+            </Label>
+            <Input
+              id="key"
+              value={manualKey}
+              onChange={(e) => setManualKey(e.target.value)}
+              placeholder="Base64 key..."
+              className="font-mono text-xs"
+            />
+            <Button
+              size="sm"
+              disabled={!manualKey.trim()}
+              onClick={() => decrypt(manualKey.trim(), tokenInfo)}
+            >
+              Decrypt record
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }

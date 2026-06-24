@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { useDocuments } from '@/hooks/useDocuments'
 import { getAuditLog, grantAccess, type AccessEvent } from '@/lib/stellar'
+import { getDocumentKey } from '@/lib/keystore'
 import { QRGenerator } from './QRGenerator'
 
 const DURATION_OPTIONS = [
@@ -70,6 +71,7 @@ type GrantStep = 'address' | 'duration' | 'loading' | 'done' | 'error'
 interface GrantState {
   docId: string
   doctorAddress: string
+  encryptionKey: string | null
   tokenId: string | null
   expiresAt: number
   step: GrantStep
@@ -87,7 +89,8 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
 
   function openGrant(docId: string) {
     setDoctorInput('')
-    setGrantState({ docId, doctorAddress: '', tokenId: null, expiresAt: 0, step: 'address', error: null })
+    const encryptionKey = getDocumentKey(docId)
+    setGrantState({ docId, doctorAddress: '', encryptionKey, tokenId: null, expiresAt: 0, step: 'address', error: null })
   }
 
   function confirmDoctor() {
@@ -224,7 +227,11 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
                 )}
 
                 {grantState?.step === 'done' && grantState.tokenId && (
-                  <QRGenerator tokenId={grantState.tokenId} expiresAt={grantState.expiresAt} />
+                  <QRGenerator
+                    tokenId={grantState.tokenId}
+                    expiresAt={grantState.expiresAt}
+                    encryptionKey={grantState.encryptionKey}
+                  />
                 )}
               </SheetContent>
             </Sheet>

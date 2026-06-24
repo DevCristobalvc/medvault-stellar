@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import { generateKey, encryptFile, exportKey, encodePayload } from '@/lib/encryption'
 import { uploadEncryptedPayload } from '@/lib/ipfs'
 import { registerDocument } from '@/lib/stellar'
+import { saveDocumentKey } from '@/lib/keystore'
 
 type Step = 'idle' | 'encrypting' | 'uploading' | 'registering' | 'done'
 type InputMode = 'text' | 'file'
@@ -74,6 +75,8 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
 
       setStep('registering')
       const documentId = await registerDocument(patientAddress, cid, docType)
+
+      saveDocumentKey(documentId, keyB64)
 
       setStep('done')
       onSuccess?.(documentId, keyB64)

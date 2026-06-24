@@ -113,7 +113,7 @@ Every read event is written to **persistent storage** on Stellar. The patient ca
 
 **Language:** Rust (Soroban SDK v26)  
 **Network:** Stellar Testnet  
-**Contract ID:** `CCQ65ECKUKP4SSSVRIHREFCU23SV3Y45O4WOBO34H3P6NUYQSR3RNXXV`
+**Contract ID:** `CC7XAXGFCQ73Y2U3RCA6OSSQRJCQCDAAIYFE2U7PHFRQOXMGABG5PGOF`
 
 ### Functions
 
@@ -122,17 +122,19 @@ Every read event is written to **persistent storage** on Stellar. The patient ca
 | `register_document` | Doctor | Persistent | Register encrypted CID on-chain |
 | `grant_access` | Patient | Temporary | Generate time-bound access token |
 | `verify_access` | None (read) | — | Check token validity and expiry |
+| `revoke_access` | Patient | Temporary | Delete token before expiry |
 | `log_access` | Doctor | Persistent | Record access event in audit log |
 | `get_audit_log` | Patient | — | Retrieve patient's access history |
 | `get_patient_documents` | Patient | — | List all document IDs for a patient |
 | `get_document` | None (read) | — | Get document metadata by ID |
+| `get_token_info` | None (read) | — | Resolve document_id from token |
 
 ### Tests
 
 ```bash
 cd contracts/medvault
 cargo test
-# 7 tests, 0 failures
+# 11 tests, 0 failures
 ```
 
 ---

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ShieldCheck, Clock, QrCode, FileText, RefreshCw, UserCheck } from 'lucide-react'
+import { ShieldCheck, Clock, QrCode, FileText, RefreshCw, UserCheck, ShieldX, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,8 +9,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { useDocuments } from '@/hooks/useDocuments'
-import { getAuditLog, grantAccess, type AccessEvent } from '@/lib/stellar'
+import { getAuditLog, grantAccess, revokeAccess, type AccessEvent } from '@/lib/stellar'
 import { getDocumentKey } from '@/lib/keystore'
+import { saveActiveToken, getActiveTokens, removeToken, type ActiveToken } from '@/lib/tokenstore'
 import { QRGenerator } from './QRGenerator'
 
 const DURATION_OPTIONS = [
@@ -51,6 +52,48 @@ function DocumentCard({
   )
 }
 
+function ActiveTokenCard({
+  token,
+  onRevoke,
+  revoking,
+}: {
+  token: ActiveToken
+  onRevoke: (tokenId: string) => void
+  revoking: boolean
+}) {
+  const expiresIn = token.expiresAt - Math.floor(Date.now() / 1000)
+  const h = Math.floor(expiresIn / 3600)
+  const m = Math.floor((expiresIn % 3600) / 60)
+  const label = h > 24 ? `${Math.floor(h / 24)}d` : h > 0 ? `${h}h ${m}m` : `${m}m`
+  const urgent = expiresIn < 3600
+
+  return (
+    <div className="flex items-start gap-3 py-2.5">
+      <div className="min-w-0 flex-1">
+        <p className="font-mono text-xs text-foreground truncate">
+          {token.doctorAddress.slice(0, 8)}...{token.doctorAddress.slice(-4)}
+        </p>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <Clock className={`h-3 w-3 ${urgent ? 'text-amber-500' : 'text-muted-foreground'}`} />
+          <span className={`text-xs ${urgent ? 'text-amber-500' : 'text-muted-foreground'}`}>
+            expires in {label}
+          </span>
+        </div>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={revoking}
+        onClick={() => onRevoke(token.tokenId)}
+        className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2 text-xs shrink-0"
+      >
+        <ShieldX className="h-3.5 w-3.5 mr-1" />
+        Revoke
+      </Button>
+    </div>
+  )
+}
+
 function AuditEntry({ event }: { event: AccessEvent }) {
   const date = new Date(event.accessedAt * 1000).toLocaleString()
   return (
@@ -84,18 +127,24 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
   const [auditLoading, setAuditLoading] = useState(false)
   const [grantState, setGrantState] = useState<GrantState | null>(null)
   const [doctorInput, setDoctorInput] = useState('')
+  const [activeTokens, setActiveTokens] = useState<ActiveToken[]>([])
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null)
+  const [revokingId, setRevokingId] = useState<string | null>(null)
 
   useEffect(() => { reload() }, [reload])
 
   function openGrant(docId: string) {
     setDoctorInput('')
+    setSelectedDocId(docId)
+    setActiveTokens(getActiveTokens(docId))
     const encryptionKey = getDocumentKey(docId)
     setGrantState({ docId, doctorAddress: '', encryptionKey, tokenId: null, expiresAt: 0, step: 'address', error: null })
   }
 
   function confirmDoctor() {
-    if (!doctorInput.trim().startsWith('G') || doctorInput.trim().length < 56) return
-    setGrantState((s) => s && { ...s, doctorAddress: doctorInput.trim(), step: 'duration' })
+    const addr = doctorInput.trim()
+    if (!addr.startsWith('G') || addr.length < 56) return
+    setGrantState((s) => s && { ...s, doctorAddress: addr, step: 'duration' })
   }
 
   async function handleGrantAccess(durationSeconds: number) {
@@ -104,9 +153,25 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
     setGrantState((s) => s && { ...s, step: 'loading', expiresAt })
     try {
       const tokenId = await grantAccess(grantState.doctorAddress, grantState.docId, expiresAt)
+      saveActiveToken({ tokenId, documentId: grantState.docId, doctorAddress: grantState.doctorAddress, expiresAt })
+      setActiveTokens(getActiveTokens(grantState.docId))
       setGrantState((s) => s && { ...s, tokenId, step: 'done' })
     } catch (e) {
       setGrantState((s) => s && { ...s, step: 'error', error: e instanceof Error ? e.message : 'Failed' })
+    }
+  }
+
+  async function handleRevoke(tokenId: string) {
+    if (!selectedDocId) return
+    setRevokingId(tokenId)
+    try {
+      await revokeAccess(tokenId, publicKey)
+      removeToken(tokenId)
+      setActiveTokens(getActiveTokens(selectedDocId))
+    } catch (e) {
+      console.error('Revoke failed:', e)
+    } finally {
+      setRevokingId(null)
     }
   }
 
@@ -123,6 +188,8 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
   function resetGrant() {
     setGrantState(null)
     setDoctorInput('')
+    setSelectedDocId(null)
+    setActiveTokens([])
   }
 
   return (
@@ -158,10 +225,35 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
               <SheetTrigger className="w-full" onClick={() => openGrant(doc.id)}>
                 <DocumentCard doc={doc} />
               </SheetTrigger>
+
               <SheetContent side="bottom" className="rounded-t-2xl max-h-[90dvh] overflow-y-auto">
-                <SheetHeader className="pb-4">
-                  <SheetTitle className="text-left">Grant Access</SheetTitle>
+                <SheetHeader className="pb-2">
+                  <SheetTitle className="text-left text-base">{doc.docType.replace(/_/g, ' ')}</SheetTitle>
                 </SheetHeader>
+
+                {activeTokens.length > 0 && (
+                  <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                    <p className="text-xs font-medium text-amber-700 flex items-center gap-1.5 mb-1">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Active accesses ({activeTokens.length})
+                    </p>
+                    <div className="divide-y divide-amber-100">
+                      {activeTokens.map((t) => (
+                        <ActiveTokenCard
+                          key={t.tokenId}
+                          token={t}
+                          onRevoke={handleRevoke}
+                          revoking={revokingId === t.tokenId}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Separator className="mb-4" />
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                  Grant new access
+                </p>
 
                 {grantState?.step === 'address' && (
                   <div className="flex flex-col gap-3">
@@ -179,7 +271,7 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
                         autoComplete="off"
                       />
                       <p className="text-xs text-muted-foreground">
-                        The doctor must connect this wallet to access the record.
+                        Only this wallet will be able to decrypt the record.
                       </p>
                     </div>
                     <Button
@@ -194,7 +286,7 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
                 {grantState?.step === 'duration' && (
                   <div className="flex flex-col gap-3">
                     <div className="rounded-lg bg-muted/40 border border-border px-3 py-2 mb-1">
-                      <p className="text-xs text-muted-foreground">Doctor</p>
+                      <p className="text-xs text-muted-foreground">Doctor wallet</p>
                       <p className="font-mono text-xs truncate">{grantState.doctorAddress}</p>
                     </div>
                     <Label className="text-muted-foreground text-xs uppercase tracking-wide">Access duration</Label>

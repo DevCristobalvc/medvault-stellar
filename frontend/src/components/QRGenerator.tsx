@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 interface QRGeneratorProps {
   tokenId: string
   expiresAt: number
+  encryptionKey?: string | null
   baseUrl?: string
 }
 
@@ -31,12 +32,15 @@ function formatRemaining(seconds: number) {
   return [h, m, s].map((n) => String(n).padStart(2, '0')).join(':')
 }
 
-export function QRGenerator({ tokenId, expiresAt, baseUrl }: QRGeneratorProps) {
+export function QRGenerator({ tokenId, expiresAt, encryptionKey, baseUrl }: QRGeneratorProps) {
   const remaining = useCountdown(expiresAt)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const expired = remaining <= 0
 
-  const url = `${baseUrl ?? window.location.origin}/doctor?token=${tokenId}`
+  const base = `${baseUrl ?? window.location.origin}/doctor?token=${tokenId}`
+  const url = encryptionKey
+    ? `${base}#key=${encodeURIComponent(encryptionKey)}`
+    : base
 
   function download() {
     const canvas = document.querySelector<HTMLCanvasElement>('#qr-canvas canvas')

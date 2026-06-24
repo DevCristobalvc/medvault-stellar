@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
-import { Download, Share2, Clock } from 'lucide-react'
+import { Download, Share2, Clock, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -35,6 +35,7 @@ function formatRemaining(seconds: number) {
 export function QRGenerator({ tokenId, expiresAt, encryptionKey, baseUrl }: QRGeneratorProps) {
   const remaining = useCountdown(expiresAt)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [copied, setCopied] = useState(false)
   const expired = remaining <= 0
 
   const base = `${baseUrl ?? window.location.origin}/doctor?token=${tokenId}`
@@ -51,11 +52,17 @@ export function QRGenerator({ tokenId, expiresAt, encryptionKey, baseUrl }: QRGe
     link.click()
   }
 
+  async function copyLink() {
+    await navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   async function share() {
     if (navigator.share) {
       await navigator.share({ title: 'MedVault Access', url })
     } else {
-      await navigator.clipboard.writeText(url)
+      await copyLink()
     }
   }
 
@@ -84,15 +91,21 @@ export function QRGenerator({ tokenId, expiresAt, encryptionKey, baseUrl }: QRGe
         </div>
 
         {!expired && (
-          <div className="flex gap-2 w-full">
-            <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={download}>
-              <Download className="h-3.5 w-3.5" />
-              Download
+          <div className="flex flex-col gap-2 w-full">
+            <Button size="sm" className="w-full gap-1.5" onClick={copyLink}>
+              {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? 'Link copied!' : 'Copy link'}
             </Button>
-            <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={share}>
-              <Share2 className="h-3.5 w-3.5" />
-              Share
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={download}>
+                <Download className="h-3.5 w-3.5" />
+                Save QR
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={share}>
+                <Share2 className="h-3.5 w-3.5" />
+                Share
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>

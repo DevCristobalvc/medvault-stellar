@@ -1,0 +1,24 @@
+{
+  "name": "medvault-stellar",
+  "version": "1.0.0",
+  "description": "> Hackathon: **Stellar PULSO** (NearX + Stellar Development Foundation) · Colombia",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DevCristobalvc/medvault-stellar.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/DevCristobalvc/medvault-stellar/issues"
+  },
+  "homepage": "https://github.com/DevCristobalvc/medvault-stellar#readme",
+  "dependencies": {
+    "pinata": "^2.5.6"
+  }
+}

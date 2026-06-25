@@ -58,6 +58,8 @@ async function buildAndSubmit(
   args: xdr.ScVal[],
   signerPublicKey: string
 ): Promise<xdr.ScVal> {
+  if (!CONTRACT_ID) throw new Error('VITE_CONTRACT_ID is not set')
+
   const s = server()
   const account = await s.getAccount(signerPublicKey)
   const contract = new Contract(CONTRACT_ID)
@@ -88,6 +90,12 @@ async function buildAndSubmit(
     await new Promise((r) => setTimeout(r, 1500))
     getResult = await s.getTransaction(result.hash)
     attempts++
+  }
+
+  if (getResult.status === 'FAILED') {
+    const failed = getResult as SorobanRpc.Api.GetFailedTransactionResponse
+    const xdrB64 = failed.resultXdr?.toXDR('base64') ?? 'unknown'
+    throw new Error(`Transaction FAILED on-chain. ResultXDR: ${xdrB64}`)
   }
 
   if (getResult.status !== 'SUCCESS') {

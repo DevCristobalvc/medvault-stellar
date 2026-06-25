@@ -39,6 +39,7 @@ pub enum DataKey {
     Token(BytesN<32>),
     AuditLog(Address),
     PatientDocs(Address),
+    DoctorTokens(Address),
 }
 
 fn id_from_bytes(env: &Env, data: Bytes) -> BytesN<32> {
@@ -58,8 +59,6 @@ impl MedVaultContract {
         doc_type: String,
     ) -> BytesN<32> {
         let created_at = env.ledger().timestamp();
-
-        // doc_id derived from CID bytes — deterministic, same in simulation and real execution
         let doc_id = id_from_bytes(&env, cid.to_bytes());
 
         let doc = Document {
@@ -77,7 +76,6 @@ impl MedVaultContract {
             .persistent()
             .get(&DataKey::PatientDocs(patient.clone()))
             .unwrap_or(vec![&env]);
-
         docs.push_back(doc_id.clone());
         env.storage().persistent().set(&DataKey::PatientDocs(patient), &docs);
 
@@ -98,8 +96,21 @@ impl MedVaultContract {
         combined.append(&exp_bytes);
         let token_id = id_from_bytes(&env, combined);
 
-        let token = AccessToken { doctor, patient, document_id, expires_at };
+        let token = AccessToken {
+            doctor: doctor.clone(),
+            patient,
+            document_id,
+            expires_at,
+        };
         env.storage().temporary().set(&DataKey::Token(token_id.clone()), &token);
+
+        let mut doctor_tokens: Vec<BytesN<32>> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::DoctorTokens(doctor.clone()))
+            .unwrap_or(vec![&env]);
+        doctor_tokens.push_back(token_id.clone());
+        env.storage().persistent().set(&DataKey::DoctorTokens(doctor), &doctor_tokens);
 
         token_id
     }
@@ -141,6 +152,13 @@ impl MedVaultContract {
 
     pub fn get_token_info(env: Env, token_id: BytesN<32>) -> Option<AccessToken> {
         env.storage().temporary().get(&DataKey::Token(token_id))
+    }
+
+    pub fn get_doctor_tokens(env: Env, doctor: Address) -> Vec<BytesN<32>> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::DoctorTokens(doctor))
+            .unwrap_or(vec![&env])
     }
 
     pub fn revoke_access(env: Env, patient: Address, token_id: BytesN<32>) {

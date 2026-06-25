@@ -200,6 +200,38 @@ fn test_revoke_access() {
 }
 
 #[test]
+fn test_get_doctor_tokens() {
+    let (env, client) = setup();
+    let doctor = Address::generate(&env);
+    let patient = Address::generate(&env);
+
+    let doc_id = client.register_document(
+        &doctor, &patient,
+        &String::from_str(&env, "QmCID"),
+        &String::from_str(&env, "history"),
+    );
+
+    env.ledger().set_timestamp(1000);
+    let token_id1 = client.grant_access(&patient, &doctor, &doc_id, &9999);
+
+    env.ledger().set_timestamp(2000);
+    let token_id2 = client.grant_access(&patient, &doctor, &doc_id, &99999);
+
+    let tokens = client.get_doctor_tokens(&doctor);
+    assert_eq!(tokens.len(), 2);
+    assert!(tokens.contains(&token_id1));
+    assert!(tokens.contains(&token_id2));
+}
+
+#[test]
+fn test_get_doctor_tokens_empty() {
+    let (env, client) = setup();
+    let doctor = Address::generate(&env);
+    let tokens = client.get_doctor_tokens(&doctor);
+    assert_eq!(tokens.len(), 0);
+}
+
+#[test]
 fn test_revoke_wrong_patient() {
     let (env, client) = setup();
     let doctor = Address::generate(&env);

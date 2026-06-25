@@ -1,18 +1,11 @@
-import { ShieldCheck, FileKey, Activity, ArrowRight } from 'lucide-react'
+import { ShieldCheck, ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { buttonVariants } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { t, type Lang } from '@/lib/i18n'
 
 interface HomeProps { lang: Lang }
-
-const FEATURES = [
-  { icon: ShieldCheck, titleKey: 'f1_title', descKey: 'f1_desc' },
-  { icon: FileKey,     titleKey: 'f2_title', descKey: 'f2_desc' },
-  { icon: Activity,    titleKey: 'f3_title', descKey: 'f3_desc' },
-] as const
 
 const ease = [0.22, 1, 0.36, 1] as [number, number, number, number]
 
@@ -30,10 +23,6 @@ const fadeUp = (delay = 0): Variants => ({
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay, ease } },
 })
 
-const cardVariant: Variants = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease } },
-}
 
 export function Home({ lang }: HomeProps) {
   const reduced = useReducedMotion()
@@ -148,52 +137,18 @@ export function Home({ lang }: HomeProps) {
         </motion.div>
       </section>
 
-      <Separator />
-
-      <motion.section
-        variants={{ visible: { transition: { staggerChildren: 0.12 } } }}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: '-60px' }}
-        className="flex flex-col gap-6 px-5 py-10 md:px-8 md:grid md:grid-cols-3 md:gap-8"
+      <motion.div
+        initial={reduced ? false : { opacity: 0, y: 8 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="px-5 pb-12 flex justify-center"
       >
-        {FEATURES.map(({ icon: Icon, titleKey, descKey }) => (
-          <motion.div
-            key={titleKey}
-            variants={reduced ? undefined : cardVariant}
-            className="flex flex-col gap-2"
-          >
-            <div className="w-8 h-8 rounded-lg border border-border flex items-center justify-center">
-              <Icon className="h-4 w-4 text-primary" />
-            </div>
-            <h3 className="text-sm font-semibold">{t('home', titleKey, lang)}</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">{t('home', descKey, lang)}</p>
-          </motion.div>
-        ))}
-      </motion.section>
-
-      <div className="px-5 md:px-8 pb-10 flex flex-col items-center gap-3 text-center">
-        <motion.p
-          initial={reduced ? false : { opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-sm text-muted-foreground"
-        >
-          {t('problem', 'solution', lang)}
-        </motion.p>
-        <motion.div
-          initial={reduced ? false : { opacity: 0, y: 8 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          <Link to="/problem" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5')}>
-            {t('problem', 'badge', lang)}
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </motion.div>
-      </div>
+        <Link to="/problem" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5')}>
+          {t('problem', 'badge', lang)}
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </motion.div>
     </div>
   )
 }

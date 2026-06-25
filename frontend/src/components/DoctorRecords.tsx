@@ -5,10 +5,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { getDoctorTokens, getTokenInfo, getDocument } from '@/lib/stellar'
+import { getDoctorTokens, getTokenInfo, getDocument, getEncryptedKey } from '@/lib/stellar'
 import { getDoctorRecords, saveDoctorRecord, type DoctorRecord } from '@/lib/doctorstore'
 import { downloadEncryptedPayload } from '@/lib/ipfs'
-import { importKey, decryptFile, decodePayload } from '@/lib/encryption'
+import { decryptFile, decodePayload } from '@/lib/encryption'
+import { decryptKeyWithWK, base64ToWk } from '@/lib/ecies'
 
 interface DoctorRecordsProps {
   doctorPublicKey: string
@@ -115,10 +116,13 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
     setContent(null)
     setDecrypting(true)
     try {
+      const encryptedKeyBytes = await getEncryptedKey(record.tokenId)
+      if (!encryptedKeyBytes) throw new Error('Encrypted key not found on-chain')
+      const wk = base64ToWk(record.encryptionKey!)
+      const aesKey = await decryptKeyWithWK(encryptedKeyBytes, wk)
       const payload = await downloadEncryptedPayload(record.cid)
       const { ciphertext, iv } = decodePayload(payload)
-      const key = await importKey(record.encryptionKey)
-      const plaintext = await decryptFile(ciphertext, iv, key)
+      const plaintext = await decryptFile(ciphertext, iv, aesKey)
       setContent(new TextDecoder().decode(plaintext))
     } catch (e) {
       setContent(`Error: ${e instanceof Error ? e.message : 'Decryption failed'}`)

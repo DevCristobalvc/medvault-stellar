@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { verifyAccess, logAccess, getTokenInfo, getDocument, type Document } from '@/lib/stellar'
+import { verifyAccess, logAccess, getTokenInfo, getDocument, getEncryptedKey, type Document } from '@/lib/stellar'
 import { downloadEncryptedPayload } from '@/lib/ipfs'
-import { importKey, decryptFile, decodePayload } from '@/lib/encryption'
+import { decryptFile, decodePayload } from '@/lib/encryption'
+import { decryptKeyWithWK, base64ToWk } from '@/lib/ecies'
 import { saveDoctorRecord } from '@/lib/doctorstore'
 
 type AccessStatus =
@@ -65,16 +66,23 @@ export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey }: Doctor
     }
   }
 
-  async function decrypt(keyB64: string, tokenInfo: { documentId: string; patient: string }) {
+  async function decrypt(wkB64: string, tokenInfo: { documentId: string; patient: string }) {
     setStatus({ phase: 'decrypting' })
     try {
       const doc = await getDocument(tokenInfo.documentId)
       if (!doc) throw new Error('Document not found on-chain')
 
+      const encryptedKeyBytes = await getEncryptedKey(tokenId)
+      if (!encryptedKeyBytes || encryptedKeyBytes.length === 0) {
+        throw new Error('Encrypted key not found in contract')
+      }
+
+      const wk = base64ToWk(wkB64)
+      const aesKey = await decryptKeyWithWK(encryptedKeyBytes, wk)
+
       const payload = await downloadEncryptedPayload(doc.cid)
       const { ciphertext, iv } = decodePayload(payload)
-      const key = await importKey(keyB64)
-      const plaintext = await decryptFile(ciphertext, iv, key)
+      const plaintext = await decryptFile(ciphertext, iv, aesKey)
       const content = new TextDecoder().decode(plaintext)
 
       await logAccess(tokenId, tokenInfo.patient)
@@ -87,7 +95,7 @@ export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey }: Doctor
         patientAddress: tokenInfo.patient,
         createdAt: doc.createdAt,
         accessedAt: Math.floor(Date.now() / 1000),
-        encryptionKey: keyB64,
+        encryptionKey: wkB64,
       })
 
       setStatus({ phase: 'ready', content, doc })

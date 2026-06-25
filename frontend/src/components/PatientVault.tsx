@@ -12,6 +12,8 @@ import { useDocuments } from '@/hooks/useDocuments'
 import { getAuditLog, grantAccess, revokeAccess, type AccessEvent } from '@/lib/stellar'
 import { getDocumentKey } from '@/lib/keystore'
 import { saveActiveToken, getActiveTokens, removeToken, type ActiveToken } from '@/lib/tokenstore'
+import { generateWrappingKey, encryptKeyWithWK, wkToBase64 } from '@/lib/ecies'
+import { importKey } from '@/lib/encryption'
 import { QRGenerator } from './QRGenerator'
 
 const DURATION_OPTIONS = [
@@ -158,10 +160,37 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
     const expiresAt = Math.floor(Date.now() / 1000) + durationSeconds
     setGrantState((s) => s && { ...s, step: 'loading', expiresAt })
     try {
-      const tokenId = await grantAccess(grantState.doctorAddress, grantState.docId, expiresAt)
-      saveActiveToken({ tokenId, documentId: grantState.docId, doctorAddress: grantState.doctorAddress, expiresAt })
+      const keyB64 = getDocumentKey(grantState.docId)
+      let encryptedKeyBytes: Uint8Array = new Uint8Array(60)
+      let wk: Uint8Array | null = null
+
+      if (keyB64) {
+        const aesKey = await importKey(keyB64)
+        wk = generateWrappingKey()
+        encryptedKeyBytes = await encryptKeyWithWK(aesKey, wk)
+      }
+
+      const tokenId = await grantAccess(
+        grantState.doctorAddress,
+        grantState.docId,
+        expiresAt,
+        encryptedKeyBytes
+      )
+
+      const wrappingKeyB64 = wk ? wkToBase64(wk) : null
+      saveActiveToken({
+        tokenId,
+        documentId: grantState.docId,
+        doctorAddress: grantState.doctorAddress,
+        expiresAt,
+      })
       setActiveTokens(getActiveTokens(grantState.docId))
-      setGrantState((s) => s && { ...s, tokenId, step: 'done' })
+      setGrantState((s) => s && {
+        ...s,
+        tokenId,
+        encryptionKey: wrappingKeyB64,
+        step: 'done',
+      })
     } catch (e) {
       setGrantState((s) => s && { ...s, step: 'error', error: e instanceof Error ? e.message : 'Failed' })
     }

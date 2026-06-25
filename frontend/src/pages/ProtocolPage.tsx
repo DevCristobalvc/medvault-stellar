@@ -1,7 +1,11 @@
+import { useState } from 'react'
 import { MermaidDiagram } from '@/components/MermaidDiagram'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { t, type Lang } from '@/lib/i18n'
+import { verifyZkpProof } from '@/lib/stellar'
+import { ZKP_DEMO_PROOF } from '@/lib/zkpProof'
 
 interface ProtocolPageProps { lang: Lang }
 
@@ -68,6 +72,69 @@ const prepared = await server.prepareTransaction(tx)
 // → sign with Freighter, submit`
 
 type Desc = { en: string; es: string; pt: string }
+
+const ZK_COPY = {
+  title: { en: 'ZK Merkle membership — live on-chain', es: 'Membresía Merkle ZK — on-chain en vivo', pt: 'Associação Merkle ZK — on-chain ao vivo' },
+  desc: {
+    en: 'A Groth16 proof (BLS12-381) that a wallet belongs to the authorized-doctor set, without revealing which one. Verified live by the deployed contract via env.crypto().bls12_381().pairing_check (CAP-0052).',
+    es: 'Una prueba Groth16 (BLS12-381) de que una wallet pertenece al conjunto de médicos autorizados, sin revelar cuál. Verificada en vivo por el contrato vía env.crypto().bls12_381().pairing_check (CAP-0052).',
+    pt: 'Uma prova Groth16 (BLS12-381) de que uma wallet pertence ao conjunto de médicos autorizados, sem revelar qual. Verificada ao vivo pelo contrato via env.crypto().bls12_381().pairing_check (CAP-0052).',
+  },
+  button: { en: 'Verify proof on-chain', es: 'Verificar prueba on-chain', pt: 'Verificar prova on-chain' },
+  verifying: { en: 'Verifying on Soroban…', es: 'Verificando en Soroban…', pt: 'Verificando no Soroban…' },
+  ok: { en: 'Proof accepted — pairing check passed', es: 'Prueba aceptada — pairing check válido', pt: 'Prova aceita — pairing check válido' },
+  bad: { en: 'Proof rejected', es: 'Prueba rechazada', pt: 'Prova rejeitada' },
+  rootLabel: { en: 'Public input (Merkle root)', es: 'Input público (raíz Merkle)', pt: 'Input público (raiz Merkle)' },
+}
+
+function ZkVerifyPanel({ lang }: { lang: Lang }) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'ok' | 'bad' | 'error'>('idle')
+  const [error, setError] = useState('')
+
+  async function run() {
+    setStatus('loading')
+    setError('')
+    try {
+      const ok = await verifyZkpProof(ZKP_DEMO_PROOF)
+      setStatus(ok ? 'ok' : 'bad')
+    } catch (e) {
+      setStatus('error')
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-border p-4 flex flex-col gap-4">
+      <p className="text-sm text-muted-foreground leading-relaxed">{ZK_COPY.desc[lang]}</p>
+
+      <div className="flex flex-col gap-1">
+        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{ZK_COPY.rootLabel[lang]}</span>
+        <code className="font-mono text-[11px] break-all bg-muted/50 rounded-md px-3 py-2 text-foreground">
+          0x{ZKP_DEMO_PROOF.merkleRoot}
+        </code>
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <Button onClick={run} disabled={status === 'loading'} size="sm">
+          {status === 'loading' ? ZK_COPY.verifying[lang] : ZK_COPY.button[lang]}
+        </Button>
+        {status === 'ok' && (
+          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-600">
+            <span className="w-2 h-2 rounded-full bg-green-500" /> {ZK_COPY.ok[lang]}
+          </span>
+        )}
+        {status === 'bad' && (
+          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600">
+            <span className="w-2 h-2 rounded-full bg-red-500" /> {ZK_COPY.bad[lang]}
+          </span>
+        )}
+        {status === 'error' && (
+          <span className="text-xs text-red-600 break-all">{error}</span>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export function ProtocolPage({ lang }: ProtocolPageProps) {
   return (
@@ -145,6 +212,16 @@ export function ProtocolPage({ lang }: ProtocolPageProps) {
 
         <section>
           <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-base font-semibold">{ZK_COPY.title[lang]}</h2>
+            <Badge className="text-[10px] bg-green-50 text-green-700 border border-green-200 px-1.5 py-0">Live</Badge>
+          </div>
+          <ZkVerifyPanel lang={lang} />
+        </section>
+
+        <Separator />
+
+        <section>
+          <div className="flex items-center gap-2 mb-4">
             <h2 className="text-base font-semibold">Cryptography Roadmap</h2>
             <Badge variant="outline" className="text-xs">v1 → v3</Badge>
           </div>
@@ -170,10 +247,10 @@ export function ProtocolPage({ lang }: ProtocolPageProps) {
                 status: 'planned',
               },
               {
-                version: 'v4 (roadmap)',
+                version: 'v4 (live POC)',
                 title: 'ZKP Merkle membership (BLS12-381)',
-                desc: 'Doctor proves membership in authorized set without revealing identity. Uses Stellar\'s native BLS12-381 pairing and Poseidon hash (CAP-0052, CAP-0075). Circuit: merkle_membership.circom.',
-                status: 'roadmap',
+                desc: 'Doctor proves membership in authorized set without revealing identity. Groth16 proof verified on-chain via Stellar\'s native BLS12-381 pairing_check (CAP-0052), Poseidon over the BLS scalar field (CAP-0075). Circuit: merkle_membership_stellar.circom.',
+                status: 'live',
               },
             ].map((item) => (
               <div key={item.version} className="flex gap-3 rounded-lg border border-border p-3">

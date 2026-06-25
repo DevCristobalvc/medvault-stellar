@@ -105,11 +105,16 @@ async function buildAndSubmit(
   return (getResult as SorobanRpc.Api.GetSuccessfulTransactionResponse).returnValue!
 }
 
-async function readOnly(method: string, args: xdr.ScVal[]): Promise<xdr.ScVal> {
+const SIM_SOURCE = 'GAGJANUXK2IRADH7Z5DZKABFZI6VSFZSB6SJDERLZRXBNQUWWDFZQMSH'
+
+async function readOnlyFrom(
+  method: string,
+  args: xdr.ScVal[],
+  sourcePublicKey: string
+): Promise<xdr.ScVal> {
   const s = server()
   const contract = new Contract(CONTRACT_ID)
-  const publicKey = await getPublicKey()
-  const account = await s.getAccount(publicKey)
+  const account = await s.getAccount(sourcePublicKey)
 
   const tx = new TransactionBuilder(account, {
     fee: BASE_FEE,
@@ -125,6 +130,10 @@ async function readOnly(method: string, args: xdr.ScVal[]): Promise<xdr.ScVal> {
   }
 
   return (result as SorobanRpc.Api.SimulateTransactionSuccessResponse).result!.retval
+}
+
+async function readOnly(method: string, args: xdr.ScVal[]): Promise<xdr.ScVal> {
+  return readOnlyFrom(method, args, await getPublicKey())
 }
 
 export async function walletConnected(): Promise<boolean> {
@@ -282,6 +291,40 @@ export async function getTokenInfo(tokenId: string): Promise<TokenInfo | null> {
     documentId: bytesToHex(raw.document_id),
     expiresAt: Number(raw.expires_at),
   }
+}
+
+export interface ZkProof {
+  merkleRoot: string
+  proofA: string
+  proofB: string
+  proofC: string
+  ic0: string
+  ic1: string
+  alphaG1: string
+  betaG2: string
+  gammaG2: string
+  deltaG2: string
+}
+
+export async function verifyZkpProof(proof: ZkProof): Promise<boolean> {
+  const b = (hex: string) => xdr.ScVal.scvBytes(hexToBytes(hex))
+  const retval = await readOnlyFrom(
+    'verify_zkp_proof',
+    [
+      b(proof.merkleRoot),
+      b(proof.proofA),
+      b(proof.proofB),
+      b(proof.proofC),
+      b(proof.ic0),
+      b(proof.ic1),
+      b(proof.alphaG1),
+      b(proof.betaG2),
+      b(proof.gammaG2),
+      b(proof.deltaG2),
+    ],
+    SIM_SOURCE
+  )
+  return scValToNative(retval) as boolean
 }
 
 export async function getDocument(documentId: string): Promise<Document | null> {

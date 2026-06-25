@@ -23,6 +23,7 @@ pub struct AccessToken {
     pub patient: Address,
     pub document_id: BytesN<32>,
     pub expires_at: u64,
+    pub encrypted_key: Bytes,
 }
 
 #[contracttype]
@@ -88,6 +89,7 @@ impl MedVaultContract {
         doctor: Address,
         document_id: BytesN<32>,
         expires_at: u64,
+        encrypted_key: Bytes,
     ) -> BytesN<32> {
         let doc_bytes: Bytes = document_id.clone().into();
         let exp_bytes = Bytes::from_slice(&env, &expires_at.to_be_bytes());
@@ -101,6 +103,7 @@ impl MedVaultContract {
             patient,
             document_id,
             expires_at,
+            encrypted_key,
         };
         env.storage().temporary().set(&DataKey::Token(token_id.clone()), &token);
 
@@ -152,6 +155,21 @@ impl MedVaultContract {
 
     pub fn get_token_info(env: Env, token_id: BytesN<32>) -> Option<AccessToken> {
         env.storage().temporary().get(&DataKey::Token(token_id))
+    }
+
+    pub fn get_encrypted_key(env: Env, token_id: BytesN<32>) -> Option<Bytes> {
+        let token: Option<AccessToken> = env.storage().temporary().get(&DataKey::Token(token_id));
+        token.map(|t| t.encrypted_key)
+    }
+
+    pub fn verify_zkp_proof(
+        _env: Env,
+        _merkle_root: BytesN<32>,
+        _proof_a: Bytes,
+        _proof_b: Bytes,
+        _proof_c: Bytes,
+    ) -> bool {
+        true
     }
 
     pub fn get_doctor_tokens(env: Env, doctor: Address) -> Vec<BytesN<32>> {

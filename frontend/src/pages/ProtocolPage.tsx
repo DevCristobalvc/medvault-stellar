@@ -137,6 +137,61 @@ export function ProtocolPage({ lang }: ProtocolPageProps) {
             <code>{INTEGRATION_CODE}</code>
           </pre>
         </section>
+
+        <Separator />
+
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-base font-semibold">Cryptography Roadmap</h2>
+            <Badge variant="outline" className="text-xs">v1 → v3</Badge>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {[
+              {
+                version: 'v1 (current)',
+                title: 'AES key in URL hash',
+                desc: 'AES key travels in #key= fragment. Secure in transit (never reaches servers). Dependent on URL link.',
+                status: 'live',
+              },
+              {
+                version: 'v2 (deployed)',
+                title: 'On-chain encrypted key (KEM)',
+                desc: 'AES key encrypted with a random wrapping key. Encrypted key stored on Soroban. Only #wk= travels in URL. Two-factor: blockchain + URL.',
+                status: 'live',
+              },
+              {
+                version: 'v3 (planned)',
+                title: 'ECIES with Stellar public key',
+                desc: 'Wrapping key derived via X25519 ECDH using doctor\'s Stellar public key. No key in URL. Requires Freighter to expose X25519 derivation.',
+                status: 'planned',
+              },
+              {
+                version: 'v4 (roadmap)',
+                title: 'ZKP Merkle membership (BLS12-381)',
+                desc: 'Doctor proves membership in authorized set without revealing identity. Uses Stellar\'s native BLS12-381 pairing and Poseidon hash (CAP-0052, CAP-0075). Circuit: merkle_membership.circom.',
+                status: 'roadmap',
+              },
+            ].map((item) => (
+              <div key={item.version} className="flex gap-3 rounded-lg border border-border p-3">
+                <div className="shrink-0 pt-0.5">
+                  <span className={`inline-block w-2 h-2 rounded-full mt-1 ${
+                    item.status === 'live' ? 'bg-green-500' :
+                    item.status === 'planned' ? 'bg-amber-400' : 'bg-muted-foreground/40'
+                  }`} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-xs text-muted-foreground">{item.version}</span>
+                    <span className="text-sm font-medium">{item.title}</span>
+                    {item.status === 'live' && <Badge className="text-[10px] bg-green-50 text-green-700 border border-green-200 px-1.5 py-0">Live</Badge>}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   )

@@ -15,7 +15,7 @@ import { t, type Lang } from '@/lib/i18n'
 
 interface HackathonPageProps { lang: Lang }
 
-const CONTRACT_ID = 'CDRZAYUCRV422YSP4PJVL4XTNNR7VSR6AMKVFRIQGXTZ2L57T47INFFC'
+const CONTRACT_ID = 'CAUUBZYILFYVHS2IYJDMXR4GUZ2LLYVWR25W7C5PXC7A5PF3QHIUWH2M'
 const REPO_URL = 'https://github.com/DevCristobalvc/medvault-stellar'
 const DEMO_URL = 'https://frontend-eight-virid-j7gyqph2tp.vercel.app'
 const EXPLORER_URL = `https://stellar.expert/explorer/testnet/contract/${CONTRACT_ID}`
@@ -170,7 +170,7 @@ const SOLUTIONS = [
 ] as const
 
 const EVALUATION_CRITERIA = [
-  { label: 'Integration depth & technical complexity', status: 'done', note: 'Soroban contract: 12 functions, 16 tests, real Groth16 / BLS12-381 verifier (CAP-0052)' },
+  { label: 'Integration depth & technical complexity', status: 'done', note: 'Soroban contract: 12 functions, 20 tests, require_auth enforcement, real Groth16 / BLS12-381 verifier (CAP-0052)' },
   { label: 'Impact on the Stellar ecosystem', status: 'done', note: 'Open Blockchain-as-a-Service protocol for medical data in LATAM' },
   { label: 'Customer discovery & validation', status: 'pending', note: '3 recorded interviews — see Demo & Interviews above' },
   { label: 'Quality of testnet deployment', status: 'done', note: `Live on Stellar Testnet · ${CONTRACT_ID.slice(0, 12)}…` },

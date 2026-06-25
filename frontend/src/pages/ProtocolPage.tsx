@@ -5,7 +5,7 @@ import { t, type Lang } from '@/lib/i18n'
 
 interface ProtocolPageProps { lang: Lang }
 
-const CONTRACT_ID = 'CDRZAYUCRV422YSP4PJVL4XTNNR7VSR6AMKVFRIQGXTZ2L57T47INFFC'
+const CONTRACT_ID = 'CAUUBZYILFYVHS2IYJDMXR4GUZ2LLYVWR25W7C5PXC7A5PF3QHIUWH2M'
 
 const ENDPOINTS = [
   { fn: 'register_document', auth: 'Doctor',   storage: 'Persistent', desc: { en: 'Register encrypted CID on-chain', es: 'Registra CID cifrado on-chain', pt: 'Registra CID cifrado on-chain' } },
@@ -13,12 +13,12 @@ const ENDPOINTS = [
   { fn: 'verify_access',     auth: 'None',     storage: 'Read',       desc: { en: 'Check token validity and expiry', es: 'Verifica validez y expiración del token', pt: 'Verifica validade e expiração do token' } },
   { fn: 'revoke_access',     auth: 'Patient',  storage: 'Temporary',  desc: { en: 'Delete token before expiry', es: 'Elimina el token antes de expirar', pt: 'Elimina o token antes de expirar' } },
   { fn: 'log_access',        auth: 'Doctor',   storage: 'Persistent', desc: { en: 'Record access event in audit log', es: 'Registra evento de acceso en audit log', pt: 'Registra evento de acesso no audit log' } },
-  { fn: 'get_audit_log',     auth: 'Patient',  storage: 'Read',       desc: { en: "Retrieve patient's access history", es: 'Obtiene historial de accesos del paciente', pt: 'Obtém histórico de acessos do paciente' } },
+  { fn: 'get_audit_log',     auth: 'None',     storage: 'Read',       desc: { en: "Retrieve patient's access history", es: 'Obtiene historial de accesos del paciente', pt: 'Obtém histórico de acessos do paciente' } },
   { fn: 'get_document',      auth: 'None',     storage: 'Read',       desc: { en: 'Get document metadata by ID', es: 'Obtiene metadata del documento por ID', pt: 'Obtém metadados do documento por ID' } },
   { fn: 'get_token_info',    auth: 'None',     storage: 'Read',       desc: { en: 'Resolve document_id from token', es: 'Resuelve document_id desde el token', pt: 'Resolve document_id a partir do token' } },
-  { fn: 'get_patient_documents', auth: 'Patient', storage: 'Read',   desc: { en: 'List all document IDs for a patient', es: 'Lista todos los IDs de documentos del paciente', pt: 'Lista todos os IDs de documentos do paciente' } },
+  { fn: 'get_patient_documents', auth: 'None',  storage: 'Read',   desc: { en: 'List all document IDs for a patient', es: 'Lista todos los IDs de documentos del paciente', pt: 'Lista todos os IDs de documentos do paciente' } },
   { fn: 'get_encrypted_key', auth: 'None',    storage: 'Read',       desc: { en: 'Fetch on-chain encrypted AES key (KEM)', es: 'Obtiene la AES key cifrada on-chain (KEM)', pt: 'Obtém a AES key cifrada on-chain (KEM)' } },
-  { fn: 'get_doctor_tokens', auth: 'Doctor',  storage: 'Read',       desc: { en: 'List access tokens issued to a doctor', es: 'Lista los tokens de acceso emitidos a un médico', pt: 'Lista os tokens de acesso emitidos a um médico' } },
+  { fn: 'get_doctor_tokens', auth: 'None',    storage: 'Read',       desc: { en: 'List access tokens issued to a doctor', es: 'Lista los tokens de acceso emitidos a un médico', pt: 'Lista os tokens de acesso emitidos a um médico' } },
   { fn: 'verify_zkp_proof',  auth: 'None',     storage: 'Read',      desc: { en: 'Groth16 verification via BLS12-381 pairing (CAP-0052)', es: 'Verificación Groth16 vía pairing BLS12-381 (CAP-0052)', pt: 'Verificação Groth16 via pairing BLS12-381 (CAP-0052)' } },
 ]
 
@@ -55,7 +55,7 @@ const ACCESS_DIAGRAM = `sequenceDiagram
 
 const INTEGRATION_CODE = `import { Contract, Networks, rpc } from '@stellar/stellar-sdk'
 
-const CONTRACT = 'CDRZAYUCRV422YSP4PJVL4XTNNR7VSR6AMKVFRIQGXTZ2L57T47INFFC'
+const CONTRACT = 'CAUUBZYILFYVHS2IYJDMXR4GUZ2LLYVWR25W7C5PXC7A5PF3QHIUWH2M'
 const server = new rpc.Server('https://soroban-testnet.stellar.org')
 const contract = new Contract(CONTRACT)
 

@@ -47,7 +47,7 @@ export function DoctorPage() {
 
   if (tokenId) {
     return (
-      <div className="flex flex-col gap-4 px-5 py-6 md:px-8 max-w-lg mx-auto">
+      <div className="max-w-lg mx-auto">
         <DoctorAccess
           tokenId={tokenId}
           doctorPublicKey={state.publicKey}

@@ -47,6 +47,22 @@ fn id_from_bytes(env: &Env, data: Bytes) -> BytesN<32> {
     env.crypto().sha256(&data).into()
 }
 
+fn g1_from_bytes(env: &Env, b: &Bytes) -> soroban_sdk::crypto::bls12_381::Bls12381G1Affine {
+    use soroban_sdk::crypto::bls12_381::Bls12381G1Affine;
+    let arr: BytesN<96> = b.slice(0..96).try_into().unwrap_or_else(|_| BytesN::from_array(env, &[0u8; 96]));
+    Bls12381G1Affine::from_bytes(arr)
+}
+
+fn g2_from_bytes(env: &Env, b: &Bytes) -> soroban_sdk::crypto::bls12_381::Bls12381G2Affine {
+    use soroban_sdk::crypto::bls12_381::Bls12381G2Affine;
+    let arr: BytesN<192> = b.slice(0..192).try_into().unwrap_or_else(|_| BytesN::from_array(env, &[0u8; 192]));
+    Bls12381G2Affine::from_bytes(arr)
+}
+
+fn negate_g1(p: soroban_sdk::crypto::bls12_381::Bls12381G1Affine) -> soroban_sdk::crypto::bls12_381::Bls12381G1Affine {
+    -p
+}
+
 #[contract]
 pub struct MedVaultContract;
 
@@ -163,13 +179,47 @@ impl MedVaultContract {
     }
 
     pub fn verify_zkp_proof(
-        _env: Env,
-        _merkle_root: BytesN<32>,
-        _proof_a: Bytes,
-        _proof_b: Bytes,
-        _proof_c: Bytes,
+        env: Env,
+        merkle_root: BytesN<32>,
+        proof_a: Bytes,
+        proof_b: Bytes,
+        proof_c: Bytes,
+        ic_0: Bytes,
+        ic_1: Bytes,
+        alpha_g1: Bytes,
+        beta_g2: Bytes,
+        gamma_g2: Bytes,
+        delta_g2: Bytes,
     ) -> bool {
-        true
+        // Groth16 verification via Stellar BLS12-381 pairing (CAP-0052)
+        // e(-A, B) * e(alpha, beta) * e(L, gamma) * e(C, delta) == GT_identity
+        // L = IC[0] + root * IC[1]
+        use soroban_sdk::crypto::bls12_381::Bls12381Fr;
+
+        let root_fr = Bls12381Fr::from_bytes(merkle_root);
+
+        let ic_0_g1 = g1_from_bytes(&env, &ic_0);
+        let ic_1_g1 = g1_from_bytes(&env, &ic_1);
+
+        let bls = env.crypto().bls12_381();
+        let root_contribution = bls.g1_mul(&ic_1_g1, &root_fr);
+        let l_g1 = bls.g1_add(&ic_0_g1, &root_contribution);
+
+        let proof_a_g1 = g1_from_bytes(&env, &proof_a);
+        let proof_b_g2 = g2_from_bytes(&env, &proof_b);
+        let proof_c_g1 = g1_from_bytes(&env, &proof_c);
+
+        let neg_a = negate_g1(proof_a_g1);
+
+        let alpha_g1_pt = g1_from_bytes(&env, &alpha_g1);
+        let beta_g2_pt  = g2_from_bytes(&env, &beta_g2);
+        let gamma_g2_pt = g2_from_bytes(&env, &gamma_g2);
+        let delta_g2_pt = g2_from_bytes(&env, &delta_g2);
+
+        let g1s = soroban_sdk::vec![&env, neg_a, alpha_g1_pt, l_g1, proof_c_g1];
+        let g2s = soroban_sdk::vec![&env, proof_b_g2, beta_g2_pt, gamma_g2_pt, delta_g2_pt];
+
+        env.crypto().bls12_381().pairing_check(g1s, g2s)
     }
 
     pub fn get_doctor_tokens(env: Env, doctor: Address) -> Vec<BytesN<32>> {

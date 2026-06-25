@@ -5,8 +5,8 @@
 **MedVault** gives patients full control over their medical history. Records are encrypted before leaving the browser, stored on IPFS, and access is governed by time-bound smart contracts on Stellar. Every read is logged on-chain — immutably.
 
 **Live demo:** https://frontend-eight-virid-j7gyqph2tp.vercel.app  
-**Contract (testnet):** `CC7XAXGFCQ73Y2U3RCA6OSSQRJCQCDAAIYFE2U7PHFRQOXMGABG5PGOF`  
-**Explorer:** https://stellar.expert/explorer/testnet/contract/CC7XAXGFCQ73Y2U3RCA6OSSQRJCQCDAAIYFE2U7PHFRQOXMGABG5PGOF
+**Contract (testnet):** `CDRD7JXJQ4X5G6N7NK5JDRZPVVXCTRWY3CYTKXUC64TCWZHG5DDJPJCE`  
+**Explorer:** https://stellar.expert/explorer/testnet/contract/CDRD7JXJQ4X5G6N7NK5JDRZPVVXCTRWY3CYTKXUC64TCWZHG5DDJPJCE
 
 ---
 

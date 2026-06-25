@@ -55,10 +55,12 @@ function DocumentCard({
 function ActiveTokenCard({
   token,
   onRevoke,
+  onViewQR,
   revoking,
 }: {
   token: ActiveToken
   onRevoke: (tokenId: string) => void
+  onViewQR: (token: ActiveToken) => void
   revoking: boolean
 }) {
   const expiresIn = token.expiresAt - Math.floor(Date.now() / 1000)
@@ -80,16 +82,27 @@ function ActiveTokenCard({
           </span>
         </div>
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={revoking}
-        onClick={() => onRevoke(token.tokenId)}
-        className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2 text-xs shrink-0"
-      >
-        <ShieldX className="h-3.5 w-3.5 mr-1" />
-        Revoke
-      </Button>
+      <div className="flex gap-1 shrink-0">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onViewQR(token)}
+          className="h-7 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
+        >
+          <QrCode className="h-3.5 w-3.5 mr-1" />
+          QR
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={revoking}
+          onClick={() => onRevoke(token.tokenId)}
+          className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2 text-xs"
+        >
+          <ShieldX className="h-3.5 w-3.5 mr-1" />
+          Revoke
+        </Button>
+      </div>
     </div>
   )
 }
@@ -136,9 +149,23 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
   function openGrant(docId: string) {
     setDoctorInput('')
     setSelectedDocId(docId)
-    setActiveTokens(getActiveTokens(docId))
+    const tokens = getActiveTokens(docId)
+    setActiveTokens(tokens)
     const encryptionKey = getDocumentKey(docId)
     setGrantState({ docId, doctorAddress: '', encryptionKey, tokenId: null, expiresAt: 0, step: 'address', error: null })
+  }
+
+  function showExistingTokenQR(token: ActiveToken) {
+    const encryptionKey = getDocumentKey(token.documentId)
+    setGrantState({
+      docId: token.documentId,
+      doctorAddress: token.doctorAddress,
+      encryptionKey,
+      tokenId: token.tokenId,
+      expiresAt: token.expiresAt,
+      step: 'done',
+      error: null,
+    })
   }
 
   function confirmDoctor() {
@@ -226,7 +253,7 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
                 <DocumentCard doc={doc} />
               </SheetTrigger>
 
-              <SheetContent side="bottom" className="rounded-t-2xl max-h-[90dvh] overflow-y-auto">
+              <SheetContent side="bottom" className="rounded-t-2xl max-h-[90dvh] overflow-y-auto px-5 pb-8">
                 <SheetHeader className="pb-2">
                   <SheetTitle className="text-left text-base">{doc.docType.replace(/_/g, ' ')}</SheetTitle>
                 </SheetHeader>
@@ -243,6 +270,7 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
                           key={t.tokenId}
                           token={t}
                           onRevoke={handleRevoke}
+                          onViewQR={showExistingTokenQR}
                           revoking={revokingId === t.tokenId}
                         />
                       ))}

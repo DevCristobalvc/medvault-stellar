@@ -38,13 +38,24 @@ export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey }: Doctor
   async function verify() {
     setStatus({ phase: 'verifying' })
     try {
-      const [valid, tokenInfo] = await Promise.all([
-        verifyAccess(tokenId, doctorPublicKey),
-        getTokenInfo(tokenId),
-      ])
+      const tokenInfo = await getTokenInfo(tokenId)
 
-      if (!valid || !tokenInfo) {
-        setStatus({ phase: 'invalid', reason: 'Access token is invalid or has expired.' })
+      if (!tokenInfo) {
+        setStatus({ phase: 'invalid', reason: 'Access token not found or expired.' })
+        return
+      }
+
+      if (tokenInfo.doctor !== doctorPublicKey) {
+        setStatus({
+          phase: 'invalid',
+          reason: `This token requires wallet ${tokenInfo.doctor.slice(0, 6)}…${tokenInfo.doctor.slice(-4)}. You are connected with ${doctorPublicKey.slice(0, 6)}…${doctorPublicKey.slice(-4)}.`,
+        })
+        return
+      }
+
+      const valid = await verifyAccess(tokenId, doctorPublicKey)
+      if (!valid) {
+        setStatus({ phase: 'invalid', reason: 'Access token has expired.' })
         return
       }
 

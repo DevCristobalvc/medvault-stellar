@@ -1,0 +1,62 @@
+import { useEffect, useRef, useState } from 'react'
+import mermaid from 'mermaid'
+
+interface MermaidDiagramProps {
+  chart: string
+  id: string
+}
+
+let initialized = false
+
+function init() {
+  if (initialized) return
+  initialized = true
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'neutral',
+    themeVariables: {
+      primaryColor: '#1B4FD8',
+      primaryTextColor: '#0A0A0A',
+      primaryBorderColor: '#E5E5E5',
+      lineColor: '#6B6B6B',
+      secondaryColor: '#F5F5F5',
+      tertiaryColor: '#F5BE00',
+      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+      fontSize: '13px',
+    },
+    flowchart: { curve: 'basis', htmlLabels: true },
+    sequence: { useMaxWidth: true },
+  })
+}
+
+export function MermaidDiagram({ chart, id }: MermaidDiagramProps) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    if (!ref.current) return
+
+    let cancelled = false
+    init()
+
+    mermaid.render(`mermaid-${id}`, chart)
+      .then(({ svg }) => {
+        if (cancelled || !ref.current) return
+        ref.current.innerHTML = svg
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true)
+      })
+
+    return () => { cancelled = true }
+  }, [chart, id])
+
+  if (failed) return null
+
+  return (
+    <div
+      ref={ref}
+      className="w-full overflow-x-auto rounded-lg border border-border bg-background-soft p-4 [&_svg]:max-w-full [&_svg]:h-auto"
+    />
+  )
+}

@@ -113,14 +113,14 @@ Every read event is written to **persistent storage** on Stellar. The patient ca
 
 **Language:** Rust (Soroban SDK v26)  
 **Network:** Stellar Testnet  
-**Contract ID:** `CC7XAXGFCQ73Y2U3RCA6OSSQRJCQCDAAIYFE2U7PHFRQOXMGABG5PGOF`
+**Contract ID:** `CDRZAYUCRV422YSP4PJVL4XTNNR7VSR6AMKVFRIQGXTZ2L57T47INFFC`
 
 ### Functions
 
 | Function | Auth | Storage | Description |
 |---|---|---|---|
 | `register_document` | Doctor | Persistent | Register encrypted CID on-chain |
-| `grant_access` | Patient | Temporary | Generate time-bound access token |
+| `grant_access` | Patient | Temporary | Generate time-bound access token (stores encrypted AES key) |
 | `verify_access` | None (read) | — | Check token validity and expiry |
 | `revoke_access` | Patient | Temporary | Delete token before expiry |
 | `log_access` | Doctor | Persistent | Record access event in audit log |
@@ -128,13 +128,16 @@ Every read event is written to **persistent storage** on Stellar. The patient ca
 | `get_patient_documents` | Patient | — | List all document IDs for a patient |
 | `get_document` | None (read) | — | Get document metadata by ID |
 | `get_token_info` | None (read) | — | Resolve document_id from token |
+| `get_encrypted_key` | None (read) | — | Fetch on-chain encrypted AES key (KEM) |
+| `get_doctor_tokens` | Doctor | — | List access tokens issued to a doctor |
+| `verify_zkp_proof` | None (read) | — | Groth16 verification via BLS12-381 pairing (CAP-0052) |
 
 ### Tests
 
 ```bash
 cd contracts/medvault
 cargo test
-# 11 tests, 0 failures
+# 16 tests, 0 failures
 ```
 
 ---

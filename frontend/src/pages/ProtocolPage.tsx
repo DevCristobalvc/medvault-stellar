@@ -17,6 +17,9 @@ const ENDPOINTS = [
   { fn: 'get_document',      auth: 'None',     storage: 'Read',       desc: { en: 'Get document metadata by ID', es: 'Obtiene metadata del documento por ID', pt: 'Obtém metadados do documento por ID' } },
   { fn: 'get_token_info',    auth: 'None',     storage: 'Read',       desc: { en: 'Resolve document_id from token', es: 'Resuelve document_id desde el token', pt: 'Resolve document_id a partir do token' } },
   { fn: 'get_patient_documents', auth: 'Patient', storage: 'Read',   desc: { en: 'List all document IDs for a patient', es: 'Lista todos los IDs de documentos del paciente', pt: 'Lista todos os IDs de documentos do paciente' } },
+  { fn: 'get_encrypted_key', auth: 'None',    storage: 'Read',       desc: { en: 'Fetch on-chain encrypted AES key (KEM)', es: 'Obtiene la AES key cifrada on-chain (KEM)', pt: 'Obtém a AES key cifrada on-chain (KEM)' } },
+  { fn: 'get_doctor_tokens', auth: 'Doctor',  storage: 'Read',       desc: { en: 'List access tokens issued to a doctor', es: 'Lista los tokens de acceso emitidos a un médico', pt: 'Lista os tokens de acesso emitidos a um médico' } },
+  { fn: 'verify_zkp_proof',  auth: 'None',     storage: 'Read',      desc: { en: 'Groth16 verification via BLS12-381 pairing (CAP-0052)', es: 'Verificación Groth16 vía pairing BLS12-381 (CAP-0052)', pt: 'Verificação Groth16 via pairing BLS12-381 (CAP-0052)' } },
 ]
 
 const ARCH_DIAGRAM = `flowchart LR
@@ -52,7 +55,7 @@ const ACCESS_DIAGRAM = `sequenceDiagram
 
 const INTEGRATION_CODE = `import { Contract, Networks, rpc } from '@stellar/stellar-sdk'
 
-const CONTRACT = 'CC7XAXGFCQ73Y2U3RCA6OSSQRJCQCDAAIYFE2U7PHFRQOXMGABG5PGOF'
+const CONTRACT = 'CDRZAYUCRV422YSP4PJVL4XTNNR7VSR6AMKVFRIQGXTZ2L57T47INFFC'
 const server = new rpc.Server('https://soroban-testnet.stellar.org')
 const contract = new Contract(CONTRACT)
 

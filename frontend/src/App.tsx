@@ -1,12 +1,11 @@
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
-import { ShieldCheck, Stethoscope, Home as HomeIcon, AlertTriangle, Code2 } from 'lucide-react'
+import { ShieldCheck, Stethoscope, Home as HomeIcon, FileText, Code2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { WalletConnect } from '@/components/WalletConnect'
 import { LanguageSelector } from '@/components/LanguageSelector'
 import { Home } from '@/pages/Home'
 import { PatientPage } from '@/pages/PatientPage'
 import { DoctorPage } from '@/pages/DoctorPage'
-import { ProblemPage } from '@/pages/ProblemPage'
 import { ProtocolPage } from '@/pages/ProtocolPage'
 import { HackathonPage } from '@/pages/HackathonPage'
 import { useLanguage } from '@/hooks/useLanguage'
@@ -15,18 +14,19 @@ import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 const BOTTOM_NAV = [
-  { to: '/',         icon: HomeIcon,       key: 'home',      exact: true },
-  { to: '/problem',  icon: AlertTriangle,  key: 'problem',   exact: false },
-  { to: '/protocol', icon: Code2,          key: 'protocol',  exact: false },
-  { to: '/patient',  icon: ShieldCheck,    key: 'vault',     exact: false },
-  { to: '/doctor',   icon: Stethoscope,    key: 'doctor',    exact: false },
+  { to: '/',          icon: HomeIcon,     key: 'home',      exact: true },
+  { to: '/hackathon', icon: FileText,     key: 'hackathon', exact: false },
+  { to: '/protocol',  icon: Code2,        key: 'protocol',  exact: false },
+  { to: '/patient',   icon: ShieldCheck,  key: 'vault',     exact: false },
+  { to: '/doctor',    icon: Stethoscope,  key: 'doctor',    exact: false },
 ]
 
 const HEADER_NAV = [
   { to: '/',          key: 'home',       exact: true },
-  { to: '/problem',   key: 'problem',    exact: false },
-  { to: '/protocol',  key: 'protocol',   exact: false },
   { to: '/hackathon', key: 'hackathon',  exact: false },
+  { to: '/protocol',  key: 'protocol',   exact: false },
+  { to: '/patient',   key: 'vault',      exact: false },
+  { to: '/doctor',    key: 'doctor',     exact: false },
 ]
 
 function Header({ lang, setLang }: { lang: ReturnType<typeof useLanguage>['lang']; setLang: ReturnType<typeof useLanguage>['setLang'] }) {
@@ -103,7 +103,6 @@ function AnimatedRoutes({ lang }: { lang: ReturnType<typeof useLanguage>['lang']
       >
         <Routes location={location}>
           <Route path="/"          element={<Home lang={lang} />} />
-          <Route path="/problem"   element={<ProblemPage lang={lang} />} />
           <Route path="/protocol"  element={<ProtocolPage lang={lang} />} />
           <Route path="/patient"   element={<PatientPage />} />
           <Route path="/doctor"    element={<DoctorPage />} />

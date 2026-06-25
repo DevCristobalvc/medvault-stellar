@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { useDocuments } from '@/hooks/useDocuments'
@@ -20,18 +20,14 @@ const DURATION_OPTIONS = [
   { label: '7 days', seconds: 604800 },
 ]
 
-interface PatientVaultProps {
-  publicKey: string
-}
+interface PatientVaultProps { publicKey: string }
 
-function DocumentCard({
-  doc,
-}: {
-  doc: { id: string; cid: string; docType: string; createdAt: number; doctor: string }
-}) {
+type DocItem = { id: string; cid: string; docType: string; createdAt: number; doctor: string }
+
+function DocumentCard({ doc }: { doc: DocItem }) {
   const date = new Date(doc.createdAt * 1000).toLocaleDateString()
   return (
-    <div className="flex items-center gap-3 py-3 px-3.5 rounded-lg border border-border bg-card w-full text-left">
+    <div className="flex items-center gap-3 py-3 px-3.5 rounded-lg border border-border bg-card w-full text-left cursor-pointer hover:bg-muted/30 transition-colors">
       <div className="rounded-md border border-border bg-muted/30 p-1.5 shrink-0">
         <FileText className="h-4 w-4 text-muted-foreground" />
       </div>
@@ -50,10 +46,7 @@ function DocumentCard({
 }
 
 function ActiveTokenCard({
-  token,
-  onRevoke,
-  onViewQR,
-  revoking,
+  token, onRevoke, onViewQR, revoking,
 }: {
   token: ActiveToken
   onRevoke: (tokenId: string) => void
@@ -67,7 +60,7 @@ function ActiveTokenCard({
   const urgent = expiresIn < 3600
 
   return (
-    <div className="flex items-start gap-3 py-2.5">
+    <div className="flex items-center gap-2 py-2">
       <div className="min-w-0 flex-1">
         <p className="font-mono text-xs text-foreground truncate">
           {token.doctorAddress.slice(0, 8)}...{token.doctorAddress.slice(-4)}
@@ -80,24 +73,13 @@ function ActiveTokenCard({
         </div>
       </div>
       <div className="flex gap-1 shrink-0">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onViewQR(token)}
-          className="h-7 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
-        >
-          <QrCode className="h-3.5 w-3.5 mr-1" />
-          QR
+        <Button variant="ghost" size="sm" onClick={() => onViewQR(token)}
+          className="h-7 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10">
+          <QrCode className="h-3.5 w-3.5 mr-1" />QR
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={revoking}
-          onClick={() => onRevoke(token.tokenId)}
-          className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2 text-xs"
-        >
-          <ShieldX className="h-3.5 w-3.5 mr-1" />
-          Revoke
+        <Button variant="ghost" size="sm" disabled={revoking} onClick={() => onRevoke(token.tokenId)}
+          className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2 text-xs">
+          <ShieldX className="h-3.5 w-3.5 mr-1" />Revoke
         </Button>
       </div>
     </div>
@@ -138,18 +120,18 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
   const [grantState, setGrantState] = useState<GrantState | null>(null)
   const [doctorInput, setDoctorInput] = useState('')
   const [activeTokens, setActiveTokens] = useState<ActiveToken[]>([])
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null)
+  const [selectedDoc, setSelectedDoc] = useState<DocItem | null>(null)
   const [revokingId, setRevokingId] = useState<string | null>(null)
 
   useEffect(() => { reload() }, [reload])
 
-  function openGrant(docId: string) {
+  function openGrant(doc: DocItem) {
     setDoctorInput('')
-    setSelectedDocId(docId)
-    const tokens = getActiveTokens(docId)
+    setSelectedDoc(doc)
+    const tokens = getActiveTokens(doc.id)
     setActiveTokens(tokens)
-    const encryptionKey = getDocumentKey(docId)
-    setGrantState({ docId, doctorAddress: '', encryptionKey, tokenId: null, expiresAt: 0, step: 'address', error: null })
+    const encryptionKey = getDocumentKey(doc.id)
+    setGrantState({ docId: doc.id, doctorAddress: '', encryptionKey, tokenId: null, expiresAt: 0, step: 'address', error: null })
   }
 
   function showExistingTokenQR(token: ActiveToken) {
@@ -186,17 +168,24 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
   }
 
   async function handleRevoke(tokenId: string) {
-    if (!selectedDocId) return
+    if (!selectedDoc) return
     setRevokingId(tokenId)
     try {
       await revokeAccess(tokenId, publicKey)
       removeToken(tokenId)
-      setActiveTokens(getActiveTokens(selectedDocId))
+      setActiveTokens(getActiveTokens(selectedDoc.id))
     } catch (e) {
       console.error('Revoke failed:', e)
     } finally {
       setRevokingId(null)
     }
+  }
+
+  function closeDialog() {
+    setSelectedDoc(null)
+    setGrantState(null)
+    setDoctorInput('')
+    setActiveTokens([])
   }
 
   async function loadAudit() {
@@ -207,13 +196,6 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
     } finally {
       setAuditLoading(false)
     }
-  }
-
-  function resetGrant() {
-    setGrantState(null)
-    setDoctorInput('')
-    setSelectedDocId(null)
-    setActiveTokens([])
   }
 
   return (
@@ -234,7 +216,7 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
 
       <div className="flex flex-col gap-2">
         {loading
-          ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-[72px] rounded-lg" />)
+          ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-[60px] rounded-lg" />)
           : documents.length === 0
           ? (
             <Card className="shadow-none border-dashed">
@@ -245,115 +227,122 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
             </Card>
           )
           : documents.map((doc) => (
-            <Sheet key={doc.id} onOpenChange={(open) => { if (!open) resetGrant() }}>
-              <SheetTrigger className="w-full" onClick={() => openGrant(doc.id)}>
-                <DocumentCard doc={doc} />
-              </SheetTrigger>
-
-              <SheetContent side="bottom" className="rounded-t-2xl max-h-[90dvh] overflow-y-auto px-5 pb-8">
-                <SheetHeader className="pb-2">
-                  <SheetTitle className="text-left text-base">{doc.docType.replace(/_/g, ' ')}</SheetTitle>
-                </SheetHeader>
-
-                {activeTokens.length > 0 && (
-                  <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                    <p className="text-xs font-medium text-amber-700 flex items-center gap-1.5 mb-1">
-                      <AlertTriangle className="h-3.5 w-3.5" />
-                      Active accesses ({activeTokens.length})
-                    </p>
-                    <div className="divide-y divide-amber-100">
-                      {activeTokens.map((t) => (
-                        <ActiveTokenCard
-                          key={t.tokenId}
-                          token={t}
-                          onRevoke={handleRevoke}
-                          onViewQR={showExistingTokenQR}
-                          revoking={revokingId === t.tokenId}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <Separator className="mb-4" />
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-                  Grant new access
-                </p>
-
-                {grantState?.step === 'address' && (
-                  <div className="flex flex-col gap-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="doctor-addr" className="flex items-center gap-1.5">
-                        <UserCheck className="h-3.5 w-3.5" />
-                        Doctor&apos;s Stellar address
-                      </Label>
-                      <Input
-                        id="doctor-addr"
-                        placeholder="G..."
-                        value={doctorInput}
-                        onChange={(e) => setDoctorInput(e.target.value)}
-                        className="font-mono text-sm"
-                        autoComplete="off"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Only this wallet will be able to decrypt the record.
-                      </p>
-                    </div>
-                    <Button
-                      onClick={confirmDoctor}
-                      disabled={!doctorInput.trim().startsWith('G') || doctorInput.trim().length < 56}
-                    >
-                      Continue
-                    </Button>
-                  </div>
-                )}
-
-                {grantState?.step === 'duration' && (
-                  <div className="flex flex-col gap-3">
-                    <div className="rounded-lg bg-muted/40 border border-border px-3 py-2 mb-1">
-                      <p className="text-xs text-muted-foreground">Doctor wallet</p>
-                      <p className="font-mono text-xs truncate">{grantState.doctorAddress}</p>
-                    </div>
-                    <Label className="text-muted-foreground text-xs uppercase tracking-wide">Access duration</Label>
-                    {DURATION_OPTIONS.map((opt) => (
-                      <Button
-                        key={opt.seconds}
-                        variant="outline"
-                        className="justify-between"
-                        onClick={() => handleGrantAccess(opt.seconds)}
-                      >
-                        <span className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          {opt.label}
-                        </span>
-                        <span className="text-muted-foreground text-xs">→</span>
-                      </Button>
-                    ))}
-                  </div>
-                )}
-
-                {grantState?.step === 'loading' && (
-                  <div className="flex flex-col gap-3 py-6">
-                    <Skeleton className="h-[240px] w-[240px] mx-auto rounded-lg" />
-                    <Skeleton className="h-4 w-28 mx-auto" />
-                  </div>
-                )}
-
-                {grantState?.step === 'error' && (
-                  <p className="text-sm text-destructive py-4">{grantState.error}</p>
-                )}
-
-                {grantState?.step === 'done' && grantState.tokenId && (
-                  <QRGenerator
-                    tokenId={grantState.tokenId}
-                    expiresAt={grantState.expiresAt}
-                    encryptionKey={grantState.encryptionKey}
-                  />
-                )}
-              </SheetContent>
-            </Sheet>
+            <button key={doc.id} className="w-full text-left" onClick={() => openGrant(doc)}>
+              <DocumentCard doc={doc} />
+            </button>
           ))}
       </div>
+
+      <Dialog open={!!selectedDoc} onOpenChange={(open) => { if (!open) closeDialog() }}>
+        <DialogContent className="w-[calc(100vw-32px)] max-w-md max-h-[85dvh] overflow-y-auto p-0 gap-0">
+          <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
+            <DialogTitle className="text-base capitalize">
+              {selectedDoc?.docType.replace(/_/g, ' ') ?? ''}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="px-5 py-4 flex flex-col gap-4">
+            {activeTokens.length > 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+                <p className="text-xs font-medium text-amber-700 flex items-center gap-1.5 mb-1">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Active accesses ({activeTokens.length})
+                </p>
+                <div className="divide-y divide-amber-100">
+                  {activeTokens.map((t) => (
+                    <ActiveTokenCard
+                      key={t.tokenId}
+                      token={t}
+                      onRevoke={handleRevoke}
+                      onViewQR={showExistingTokenQR}
+                      revoking={revokingId === t.tokenId}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                Grant new access
+              </p>
+
+              {grantState?.step === 'address' && (
+                <div className="flex flex-col gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="doctor-addr" className="flex items-center gap-1.5 text-sm">
+                      <UserCheck className="h-3.5 w-3.5" />
+                      Doctor&apos;s Stellar address
+                    </Label>
+                    <Input
+                      id="doctor-addr"
+                      placeholder="G..."
+                      value={doctorInput}
+                      onChange={(e) => setDoctorInput(e.target.value)}
+                      className="font-mono text-sm"
+                      autoComplete="off"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Only this wallet will be able to decrypt the record.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={confirmDoctor}
+                    disabled={!doctorInput.trim().startsWith('G') || doctorInput.trim().length < 56}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              )}
+
+              {grantState?.step === 'duration' && (
+                <div className="flex flex-col gap-2.5">
+                  <div className="rounded-lg bg-muted/40 border border-border px-3 py-2">
+                    <p className="text-xs text-muted-foreground">Doctor wallet</p>
+                    <p className="font-mono text-xs truncate">{grantState.doctorAddress}</p>
+                  </div>
+                  <Label className="text-muted-foreground text-xs uppercase tracking-wide">
+                    Access duration
+                  </Label>
+                  {DURATION_OPTIONS.map((opt) => (
+                    <Button
+                      key={opt.seconds}
+                      variant="outline"
+                      className="justify-between"
+                      onClick={() => handleGrantAccess(opt.seconds)}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        {opt.label}
+                      </span>
+                      <span className="text-muted-foreground text-xs">→</span>
+                    </Button>
+                  ))}
+                </div>
+              )}
+
+              {grantState?.step === 'loading' && (
+                <div className="flex flex-col items-center gap-3 py-6">
+                  <Skeleton className="h-[200px] w-[200px] rounded-lg" />
+                  <Skeleton className="h-3 w-28" />
+                </div>
+              )}
+
+              {grantState?.step === 'error' && (
+                <p className="text-sm text-destructive py-2">{grantState.error}</p>
+              )}
+
+              {grantState?.step === 'done' && grantState.tokenId && (
+                <QRGenerator
+                  tokenId={grantState.tokenId}
+                  expiresAt={grantState.expiresAt}
+                  encryptionKey={grantState.encryptionKey}
+                />
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Separator />
 

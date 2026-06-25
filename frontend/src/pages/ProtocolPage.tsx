@@ -4,8 +4,13 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { t, type Lang } from '@/lib/i18n'
-import { verifyZkpProof } from '@/lib/stellar'
-import { ZKP_DEMO_PROOF } from '@/lib/zkpProof'
+import { verifyZkpProof, type ZkProof } from '@/lib/stellar'
+import {
+  generateMembershipProof,
+  DEFAULT_DOCTOR,
+  DEFAULT_AUTHORIZED_SET,
+  type ProverStage,
+} from '@/lib/zkp/prover'
 
 interface ProtocolPageProps { lang: Lang }
 
@@ -74,32 +79,55 @@ const prepared = await server.prepareTransaction(tx)
 type Desc = { en: string; es: string; pt: string }
 
 const ZK_COPY = {
-  title: { en: 'ZK Merkle membership — live on-chain', es: 'Membresía Merkle ZK — on-chain en vivo', pt: 'Associação Merkle ZK — on-chain ao vivo' },
+  title: { en: 'ZK Merkle membership — proven in-browser, verified on-chain', es: 'Membresía Merkle ZK — generada en el navegador, verificada on-chain', pt: 'Associação Merkle ZK — gerada no navegador, verificada on-chain' },
   desc: {
-    en: 'A Groth16 proof (BLS12-381) that a wallet belongs to the authorized-doctor set, without revealing which one. Verified live by the deployed contract via env.crypto().bls12_381().pairing_check (CAP-0052).',
-    es: 'Una prueba Groth16 (BLS12-381) de que una wallet pertenece al conjunto de médicos autorizados, sin revelar cuál. Verificada en vivo por el contrato vía env.crypto().bls12_381().pairing_check (CAP-0052).',
-    pt: 'Uma prova Groth16 (BLS12-381) de que uma wallet pertence ao conjunto de médicos autorizados, sem revelar qual. Verificada ao vivo pelo contrato via env.crypto().bls12_381().pairing_check (CAP-0052).',
+    en: 'The Groth16 proof (BLS12-381) is generated entirely in your browser with snarkjs and a Poseidon implementation over the BLS12-381 scalar field, then verified live by the deployed contract via env.crypto().bls12_381().pairing_check (CAP-0052). It proves the wallet belongs to the authorized-doctor set without revealing which member.',
+    es: 'La prueba Groth16 (BLS12-381) se genera íntegramente en tu navegador con snarkjs y una implementación de Poseidon sobre el campo escalar de BLS12-381, y luego la verifica en vivo el contrato vía env.crypto().bls12_381().pairing_check (CAP-0052). Demuestra que la wallet pertenece al conjunto de médicos autorizados sin revelar cuál.',
+    pt: 'A prova Groth16 (BLS12-381) é gerada inteiramente no seu navegador com snarkjs e uma implementação de Poseidon sobre o campo escalar de BLS12-381, e então verificada ao vivo pelo contrato via env.crypto().bls12_381().pairing_check (CAP-0052). Prova que a wallet pertence ao conjunto de médicos autorizados sem revelar qual.',
   },
-  button: { en: 'Verify proof on-chain', es: 'Verificar prueba on-chain', pt: 'Verificar prova on-chain' },
-  verifying: { en: 'Verifying on Soroban…', es: 'Verificando en Soroban…', pt: 'Verificando no Soroban…' },
-  ok: { en: 'Proof accepted — pairing check passed', es: 'Prueba aceptada — pairing check válido', pt: 'Prova aceita — pairing check válido' },
-  bad: { en: 'Proof rejected', es: 'Prueba rechazada', pt: 'Prova rejeitada' },
+  walletLabel: { en: 'Doctor wallet (member to prove)', es: 'Wallet del médico (miembro a probar)', pt: 'Wallet do médico (membro a provar)' },
+  setLabel: { en: 'Authorized set', es: 'Conjunto autorizado', pt: 'Conjunto autorizado' },
+  button: { en: 'Generate proof & verify on-chain', es: 'Generar prueba y verificar on-chain', pt: 'Gerar prova e verificar on-chain' },
   rootLabel: { en: 'Public input (Merkle root)', es: 'Input público (raíz Merkle)', pt: 'Input público (raiz Merkle)' },
+  ok: { en: 'Proof accepted on-chain — pairing check passed', es: 'Prueba aceptada on-chain — pairing check válido', pt: 'Prova aceita on-chain — pairing check válido' },
+  bad: { en: 'Proof rejected by contract', es: 'Prueba rechazada por el contrato', pt: 'Prova rejeitada pelo contrato' },
+}
+
+const STAGE_COPY: Record<ProverStage | 'verifying-onchain', { en: string; es: string; pt: string }> = {
+  'building-tree': { en: 'Building Merkle tree (Poseidon over BLS12-381)…', es: 'Construyendo árbol Merkle (Poseidon sobre BLS12-381)…', pt: 'Construindo árvore Merkle (Poseidon sobre BLS12-381)…' },
+  proving: { en: 'Generating Groth16 proof (snarkjs)…', es: 'Generando prueba Groth16 (snarkjs)…', pt: 'Gerando prova Groth16 (snarkjs)…' },
+  'verifying-local': { en: 'Verifying proof locally…', es: 'Verificando prueba localmente…', pt: 'Verificando prova localmente…' },
+  'verifying-onchain': { en: 'Verifying on Soroban contract…', es: 'Verificando en el contrato Soroban…', pt: 'Verificando no contrato Soroban…' },
 }
 
 function ZkVerifyPanel({ lang }: { lang: Lang }) {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'ok' | 'bad' | 'error'>('idle')
+  const [status, setStatus] = useState<'idle' | 'busy' | 'ok' | 'bad' | 'error'>('idle')
+  const [stage, setStage] = useState<ProverStage | 'verifying-onchain' | null>(null)
   const [error, setError] = useState('')
+  const [root, setRoot] = useState('')
+  const [proof, setProof] = useState<ZkProof | null>(null)
+  const [showProof, setShowProof] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
 
   async function run() {
-    setStatus('loading')
+    setStatus('busy')
     setError('')
+    setRoot('')
+    setProof(null)
+    const started = performance.now()
     try {
-      const ok = await verifyZkpProof(ZKP_DEMO_PROOF)
+      const { proof: zk } = await generateMembershipProof(DEFAULT_DOCTOR, DEFAULT_AUTHORIZED_SET, setStage)
+      setRoot(zk.merkleRoot)
+      setProof(zk)
+      setStage('verifying-onchain')
+      const ok = await verifyZkpProof(zk)
+      setElapsed(Math.round(performance.now() - started))
       setStatus(ok ? 'ok' : 'bad')
     } catch (e) {
       setStatus('error')
       setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setStage(null)
     }
   }
 
@@ -107,20 +135,33 @@ function ZkVerifyPanel({ lang }: { lang: Lang }) {
     <div className="rounded-xl border border-border p-4 flex flex-col gap-4">
       <p className="text-sm text-muted-foreground leading-relaxed">{ZK_COPY.desc[lang]}</p>
 
-      <div className="flex flex-col gap-1">
-        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{ZK_COPY.rootLabel[lang]}</span>
-        <code className="font-mono text-[11px] break-all bg-muted/50 rounded-md px-3 py-2 text-foreground">
-          0x{ZKP_DEMO_PROOF.merkleRoot}
-        </code>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="flex flex-col gap-1">
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{ZK_COPY.walletLabel[lang]}</span>
+          <code className="font-mono text-[11px] break-all bg-muted/50 rounded-md px-3 py-2 text-foreground">{DEFAULT_DOCTOR}</code>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{ZK_COPY.setLabel[lang]}</span>
+          <code className="font-mono text-[11px] break-all bg-muted/50 rounded-md px-3 py-2 text-muted-foreground">
+            {DEFAULT_AUTHORIZED_SET.length} {lang === 'en' ? 'members' : lang === 'es' ? 'miembros' : 'membros'} · 2^10 leaves
+          </code>
+        </div>
       </div>
 
+      {root && (
+        <div className="flex flex-col gap-1">
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{ZK_COPY.rootLabel[lang]}</span>
+          <code className="font-mono text-[11px] break-all bg-muted/50 rounded-md px-3 py-2 text-foreground">0x{root}</code>
+        </div>
+      )}
+
       <div className="flex items-center gap-3 flex-wrap">
-        <Button onClick={run} disabled={status === 'loading'} size="sm">
-          {status === 'loading' ? ZK_COPY.verifying[lang] : ZK_COPY.button[lang]}
+        <Button onClick={run} disabled={status === 'busy'} size="sm">
+          {status === 'busy' && stage ? STAGE_COPY[stage][lang] : ZK_COPY.button[lang]}
         </Button>
         {status === 'ok' && (
           <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-600">
-            <span className="w-2 h-2 rounded-full bg-green-500" /> {ZK_COPY.ok[lang]}
+            <span className="w-2 h-2 rounded-full bg-green-500" /> {ZK_COPY.ok[lang]} {elapsed > 0 && `(${(elapsed / 1000).toFixed(1)}s)`}
           </span>
         )}
         {status === 'bad' && (
@@ -128,10 +169,27 @@ function ZkVerifyPanel({ lang }: { lang: Lang }) {
             <span className="w-2 h-2 rounded-full bg-red-500" /> {ZK_COPY.bad[lang]}
           </span>
         )}
-        {status === 'error' && (
-          <span className="text-xs text-red-600 break-all">{error}</span>
-        )}
+        {status === 'error' && <span className="text-xs text-red-600 break-all">{error}</span>}
       </div>
+
+      {proof && (
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => setShowProof((v) => !v)}
+            className="text-xs text-primary self-start hover:underline"
+          >
+            {showProof ? '− ' : '+ '}
+            {lang === 'en' ? 'proof bytes' : lang === 'es' ? 'bytes de la prueba' : 'bytes da prova'}
+          </button>
+          {showProof && (
+            <pre className="rounded-lg border border-border bg-muted/40 p-3 text-[10px] font-mono overflow-x-auto text-muted-foreground leading-relaxed">
+              <code>{`pi_a (G1, 96B): ${proof.proofA}
+pi_b (G2, 192B): ${proof.proofB}
+pi_c (G1, 96B): ${proof.proofC}`}</code>
+            </pre>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { ShieldCheck, Stethoscope, Home as HomeIcon, AlertTriangle, Code2 } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { WalletConnect } from '@/components/WalletConnect'
 import { LanguageSelector } from '@/components/LanguageSelector'
 import { Home } from '@/pages/Home'
@@ -87,14 +88,19 @@ function BottomNav({ lang }: { lang: ReturnType<typeof useLanguage>['lang'] }) {
   )
 }
 
-function Layout() {
-  const { lang, setLang } = useLanguage()
-
+function AnimatedRoutes({ lang }: { lang: ReturnType<typeof useLanguage>['lang'] }) {
+  const location = useLocation()
   return (
-    <div className="flex flex-col min-h-dvh">
-      <Header lang={lang} setLang={setLang} />
-      <main className="flex-1 pb-14 md:pb-0 max-w-5xl mx-auto w-full">
-        <Routes>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -4 }}
+        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+        className="flex-1"
+      >
+        <Routes location={location}>
           <Route path="/"          element={<Home lang={lang} />} />
           <Route path="/problem"   element={<ProblemPage lang={lang} />} />
           <Route path="/protocol"  element={<ProtocolPage lang={lang} />} />
@@ -103,6 +109,19 @@ function Layout() {
           <Route path="/doctor/upload" element={<DoctorPage />} />
           <Route path="/hackathon" element={<HackathonPage lang={lang} />} />
         </Routes>
+      </motion.div>
+    </AnimatePresence>
+  )
+}
+
+function Layout() {
+  const { lang, setLang } = useLanguage()
+
+  return (
+    <div className="flex flex-col min-h-dvh">
+      <Header lang={lang} setLang={setLang} />
+      <main className="flex flex-col flex-1 pb-14 md:pb-0 max-w-5xl mx-auto w-full">
+        <AnimatedRoutes lang={lang} />
       </main>
       <BottomNav lang={lang} />
     </div>

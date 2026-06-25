@@ -230,6 +230,12 @@ export async function getPatientDocuments(patientAddress: string): Promise<strin
   return raw.map((id) => bytesToHex(id))
 }
 
+export async function getDoctorTokens(doctorAddress: string): Promise<string[]> {
+  const retval = await readOnly('get_doctor_tokens', [new Address(doctorAddress).toScVal()])
+  const raw = scValToNative(retval) as Uint8Array[]
+  return raw.map((id) => bytesToHex(id))
+}
+
 export async function revokeAccess(tokenId: string, patientAddress: string): Promise<void> {
   const patient = await getPublicKey()
   if (patient !== patientAddress) throw new Error('Connected wallet does not match patient address')

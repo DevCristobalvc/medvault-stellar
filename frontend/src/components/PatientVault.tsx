@@ -31,21 +31,18 @@ function DocumentCard({
 }) {
   const date = new Date(doc.createdAt * 1000).toLocaleDateString()
   return (
-    <div className="flex items-start justify-between gap-3 py-4 px-4 rounded-lg border border-border bg-card w-full text-left">
-      <div className="flex gap-3 min-w-0">
-        <div className="mt-0.5 rounded-md border border-border p-1.5 shrink-0">
-          <FileText className="h-4 w-4 text-muted-foreground" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-medium leading-tight truncate">{doc.docType.replace(/_/g, ' ')}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{date}</p>
-          <p className="font-mono text-xs text-muted-foreground truncate mt-0.5">
-            {doc.doctor.slice(0, 6)}...{doc.doctor.slice(-4)}
-          </p>
-        </div>
+    <div className="flex items-center gap-3 py-3 px-3.5 rounded-lg border border-border bg-card w-full text-left">
+      <div className="rounded-md border border-border bg-muted/30 p-1.5 shrink-0">
+        <FileText className="h-4 w-4 text-muted-foreground" />
       </div>
-      <div className="shrink-0 flex items-center gap-1.5 text-xs text-primary font-medium">
-        <QrCode className="h-3.5 w-3.5" />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium leading-tight truncate capitalize">
+          {doc.docType.replace(/_/g, ' ')}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">{date}</p>
+      </div>
+      <div className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/5 border border-primary/15 rounded-md px-2 py-1">
+        <QrCode className="h-3 w-3" />
         Share
       </div>
     </div>

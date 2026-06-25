@@ -13,19 +13,16 @@
           "function": {
             "contract_fn": {
               "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-              "function_name": "register_document",
+              "function_name": "log_access",
               "args": [
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                 },
                 {
+                  "bytes": "0909090909090909090909090909090909090909090909090909090909090909"
+                },
+                {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
-                },
-                {
-                  "string": "QmTestCID123"
-                },
-                {
-                  "string": "clinical_history"
                 }
               ]
             }
@@ -33,8 +30,7 @@
           "sub_invocations": []
         }
       ]
-    ],
-    []
+    ]
   ],
   "ledger": {
     "protocol_version": 26,
@@ -56,75 +52,7 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Document"
-                  },
-                  {
-                    "bytes": "37966b09acd40b473edfc0ee7c1af4dc9001bd5f6e7c4313bad54255a990696c"
-                  }
-                ]
-              },
-              "durability": "persistent",
-              "val": {
-                "map": [
-                  {
-                    "key": {
-                      "symbol": "cid"
-                    },
-                    "val": {
-                      "string": "QmTestCID123"
-                    }
-                  },
-                  {
-                    "key": {
-                      "symbol": "created_at"
-                    },
-                    "val": {
-                      "u64": "0"
-                    }
-                  },
-                  {
-                    "key": {
-                      "symbol": "doc_type"
-                    },
-                    "val": {
-                      "string": "clinical_history"
-                    }
-                  },
-                  {
-                    "key": {
-                      "symbol": "doctor"
-                    },
-                    "val": {
-                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
-                    }
-                  },
-                  {
-                    "key": {
-                      "symbol": "patient"
-                    },
-                    "val": {
-                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
-                    }
-                  }
-                ]
-              }
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 4095
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-              "key": {
-                "vec": [
-                  {
-                    "symbol": "PatientDocs"
+                    "symbol": "AuditLog"
                   },
                   {
                     "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
@@ -135,7 +63,32 @@
               "val": {
                 "vec": [
                   {
-                    "bytes": "37966b09acd40b473edfc0ee7c1af4dc9001bd5f6e7c4313bad54255a990696c"
+                    "map": [
+                      {
+                        "key": {
+                          "symbol": "accessed_at"
+                        },
+                        "val": {
+                          "u64": "0"
+                        }
+                      },
+                      {
+                        "key": {
+                          "symbol": "doctor"
+                        },
+                        "val": {
+                          "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
+                        }
+                      },
+                      {
+                        "key": {
+                          "symbol": "token_id"
+                        },
+                        "val": {
+                          "bytes": "0909090909090909090909090909090909090909090909090909090909090909"
+                        }
+                      }
+                    ]
                   }
                 ]
               }

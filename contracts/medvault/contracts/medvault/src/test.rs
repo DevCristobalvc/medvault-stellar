@@ -217,6 +217,65 @@ fn test_get_doctor_tokens_empty() {
 }
 
 #[test]
+fn test_register_document_requires_doctor_auth() {
+    let (env, client) = setup();
+    let doctor = Address::generate(&env);
+    let patient = Address::generate(&env);
+
+    client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &String::from_str(&env, "history"));
+
+    let auths = env.auths();
+    assert_eq!(auths.len(), 1);
+    assert_eq!(auths[0].0, doctor);
+}
+
+#[test]
+fn test_grant_access_requires_patient_auth() {
+    let (env, client) = setup();
+    let doctor = Address::generate(&env);
+    let patient = Address::generate(&env);
+    let doc_id: BytesN<32> = BytesN::from_array(&env, &[7u8; 32]);
+
+    env.ledger().set_timestamp(1000);
+    client.grant_access(&patient, &doctor, &doc_id, &9999, &fake_key(&env));
+
+    let auths = env.auths();
+    assert_eq!(auths.len(), 1);
+    assert_eq!(auths[0].0, patient);
+}
+
+#[test]
+fn test_log_access_requires_doctor_auth() {
+    let (env, client) = setup();
+    let doctor = Address::generate(&env);
+    let patient = Address::generate(&env);
+    let token_id: BytesN<32> = BytesN::from_array(&env, &[9u8; 32]);
+
+    client.log_access(&doctor, &token_id, &patient);
+
+    let auths = env.auths();
+    assert_eq!(auths.len(), 1);
+    assert_eq!(auths[0].0, doctor);
+}
+
+#[test]
+fn test_revoke_access_requires_patient_auth() {
+    let (env, client) = setup();
+    let doctor = Address::generate(&env);
+    let patient = Address::generate(&env);
+
+    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &String::from_str(&env, "history"));
+    env.ledger().set_timestamp(1000);
+    let token_id = client.grant_access(&patient, &doctor, &doc_id, &9999, &fake_key(&env));
+
+    client.revoke_access(&patient, &token_id);
+
+    let auths = env.auths();
+    assert_eq!(auths.len(), 1);
+    assert_eq!(auths[0].0, patient);
+}
+
+#[test]
 fn test_verify_zkp_proof_signature() {
     // Just verify the function exists with correct signature
     // Full integration testing done in zkp-jwt/stellar/test/test_stellar_proof.mjs

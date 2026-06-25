@@ -75,6 +75,8 @@ impl MedVaultContract {
         cid: String,
         doc_type: String,
     ) -> BytesN<32> {
+        doctor.require_auth();
+
         let created_at = env.ledger().timestamp();
         let doc_id = id_from_bytes(&env, cid.to_bytes());
 
@@ -107,6 +109,8 @@ impl MedVaultContract {
         expires_at: u64,
         encrypted_key: Bytes,
     ) -> BytesN<32> {
+        patient.require_auth();
+
         let doc_bytes: Bytes = document_id.clone().into();
         let exp_bytes = Bytes::from_slice(&env, &expires_at.to_be_bytes());
         let mut combined = Bytes::new(&env);
@@ -143,6 +147,8 @@ impl MedVaultContract {
     }
 
     pub fn log_access(env: Env, doctor: Address, token_id: BytesN<32>, patient: Address) {
+        doctor.require_auth();
+
         let event = AccessEvent {
             doctor,
             token_id,
@@ -230,6 +236,8 @@ impl MedVaultContract {
     }
 
     pub fn revoke_access(env: Env, patient: Address, token_id: BytesN<32>) {
+        patient.require_auth();
+
         let token: Option<AccessToken> = env
             .storage()
             .temporary()

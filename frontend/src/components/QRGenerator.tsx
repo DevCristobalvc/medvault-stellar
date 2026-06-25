@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
-import { Download, Share2, Clock, Copy, Check } from 'lucide-react'
+import { Download, Clock, Copy, Check, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -58,13 +58,6 @@ export function QRGenerator({ tokenId, expiresAt, encryptionKey, baseUrl }: QRGe
     setTimeout(() => setCopied(false), 2000)
   }
 
-  async function share() {
-    if (navigator.share) {
-      await navigator.share({ title: 'MedVault Access', url })
-    } else {
-      await copyLink()
-    }
-  }
 
   return (
     <Card className="w-full max-w-xs mx-auto">
@@ -92,18 +85,23 @@ export function QRGenerator({ tokenId, expiresAt, encryptionKey, baseUrl }: QRGe
 
         {!expired && (
           <div className="flex flex-col gap-2 w-full">
-            <Button size="sm" className="w-full gap-1.5" onClick={copyLink}>
-              {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              {copied ? 'Link copied!' : 'Copy link'}
-            </Button>
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 w-full h-8 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Open in browser
+            </a>
             <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={copyLink}>
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? 'Copied!' : 'Copy link'}
+              </Button>
               <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={download}>
                 <Download className="h-3.5 w-3.5" />
                 Save QR
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={share}>
-                <Share2 className="h-3.5 w-3.5" />
-                Share
               </Button>
             </div>
           </div>

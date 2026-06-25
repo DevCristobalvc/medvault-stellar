@@ -10,6 +10,7 @@ import { ProblemPage } from '@/pages/ProblemPage'
 import { ProtocolPage } from '@/pages/ProtocolPage'
 import { HackathonPage } from '@/pages/HackathonPage'
 import { useLanguage } from '@/hooks/useLanguage'
+import { WalletProvider } from '@/contexts/WalletContext'
 import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
@@ -131,7 +132,9 @@ function Layout() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Layout />
+      <WalletProvider>
+        <Layout />
+      </WalletProvider>
     </BrowserRouter>
   )
 }

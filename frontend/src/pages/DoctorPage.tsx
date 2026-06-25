@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useWallet } from '@/hooks/useWallet'
+import { useWallet } from '@/contexts/WalletContext'
 import { DoctorAccess } from '@/components/DoctorAccess'
 import { DocumentUpload } from '@/components/DocumentUpload'
 import { WalletConnect } from '@/components/WalletConnect'

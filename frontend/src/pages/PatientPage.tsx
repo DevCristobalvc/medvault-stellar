@@ -1,4 +1,4 @@
-import { useWallet } from '@/hooks/useWallet'
+import { useWallet } from '@/contexts/WalletContext'
 import { PatientVault } from '@/components/PatientVault'
 import { WalletConnect } from '@/components/WalletConnect'
 import { ShieldCheck } from 'lucide-react'

@@ -1,7 +1,7 @@
 import { Wallet, AlertTriangle, Loader2, LogOut, ChevronDown, RefreshCw } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useWallet } from '@/hooks/useWallet'
+import { useWallet } from '@/contexts/WalletContext'
 import { cn } from '@/lib/utils'
 import { useState, useRef, useEffect } from 'react'
 

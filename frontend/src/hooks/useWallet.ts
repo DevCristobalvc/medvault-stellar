@@ -3,6 +3,7 @@ import { isConnected, getAddress, getNetwork, requestAccess } from '@stellar/fre
 
 export type WalletState =
   | { status: 'disconnected' }
+  | { status: 'disconnected_manual' }
   | { status: 'wrong_network'; network: string }
   | { status: 'connected'; publicKey: string }
 
@@ -11,14 +12,14 @@ const DISCONNECTED_KEY = 'medvault_disconnected'
 export function useWallet() {
   const [state, setState] = useState<WalletState>({ status: 'disconnected' })
   const [freighterInstalled, setFreighterInstalled] = useState<boolean | null>(null)
-  const [userDisconnected, setUserDisconnected] = useState(
-    () => localStorage.getItem(DISCONNECTED_KEY) === 'true'
-  )
 
-  const check = useCallback(async () => {
-    if (localStorage.getItem(DISCONNECTED_KEY) === 'true') {
+  const wasManuallyDisconnected = () =>
+    localStorage.getItem(DISCONNECTED_KEY) === 'true'
+
+  const check = useCallback(async (skipDisconnectGuard = false) => {
+    if (!skipDisconnectGuard && wasManuallyDisconnected()) {
       setFreighterInstalled(true)
-      setState({ status: 'disconnected' })
+      setState({ status: 'disconnected_manual' })
       return
     }
 
@@ -55,20 +56,18 @@ export function useWallet() {
 
   async function connect() {
     localStorage.removeItem(DISCONNECTED_KEY)
-    setUserDisconnected(false)
     await requestAccess()
-    await check()
+    await check(true)
   }
 
   function disconnect() {
     localStorage.setItem(DISCONNECTED_KEY, 'true')
-    setUserDisconnected(true)
-    setState({ status: 'disconnected' })
+    setState({ status: 'disconnected_manual' })
   }
 
   function truncate(key: string) {
     return `${key.slice(0, 4)}...${key.slice(-4)}`
   }
 
-  return { state, freighterInstalled, userDisconnected, connect, disconnect, refresh: check, truncate }
+  return { state, freighterInstalled, connect, disconnect, refresh: check, truncate }
 }

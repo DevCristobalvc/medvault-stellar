@@ -1,4 +1,4 @@
-import { Wallet, AlertTriangle, Loader2, LogOut, ChevronDown } from 'lucide-react'
+import { Wallet, AlertTriangle, Loader2, LogOut, ChevronDown, RefreshCw } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useWallet } from '@/hooks/useWallet'
@@ -41,6 +41,40 @@ export function WalletConnect() {
     )
   }
 
+  if (state.status === 'disconnected_manual') {
+    return (
+      <div className="relative" ref={ref}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setOpen((o) => !o)}
+          className="gap-2"
+        >
+          <Wallet className="h-4 w-4" />
+          Connect Wallet
+          <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
+        </Button>
+
+        {open && (
+          <div className="absolute right-0 top-full mt-1.5 w-64 rounded-lg border border-border bg-background shadow-md z-50 overflow-hidden">
+            <div className="px-3 py-2.5 border-b border-border bg-muted/30">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                To use a different account, switch the active account in your Freighter extension first.
+              </p>
+            </div>
+            <button
+              onClick={() => { connect(); setOpen(false) }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
+            >
+              <RefreshCw className="h-3.5 w-3.5 text-primary" />
+              Connect with Freighter
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (state.status === 'connected') {
     return (
       <div className="relative" ref={ref}>
@@ -57,7 +91,7 @@ export function WalletConnect() {
         </button>
 
         {open && (
-          <div className="absolute right-0 top-full mt-1.5 w-48 rounded-lg border border-border bg-background shadow-md z-50 overflow-hidden">
+          <div className="absolute right-0 top-full mt-1.5 w-56 rounded-lg border border-border bg-background shadow-md z-50 overflow-hidden">
             <div className="px-3 py-2.5 border-b border-border">
               <p className="text-xs text-muted-foreground">Connected wallet</p>
               <p className="font-mono text-xs text-foreground mt-0.5 truncate">{state.publicKey}</p>

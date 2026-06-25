@@ -165,11 +165,13 @@ export async function registerDocument(
 export async function grantAccess(
   doctorAddress: string,
   documentId: string,
-  expiresAt: number
+  expiresAt: number,
+  encryptedKey: Uint8Array
 ): Promise<string> {
   const patient = await getPublicKey()
 
   const docIdBytes = xdr.ScVal.scvBytes(hexToBytes(documentId))
+  const encKeyScVal = xdr.ScVal.scvBytes(encryptedKey)
   const retval = await buildAndSubmit(
     'grant_access',
     [
@@ -177,11 +179,19 @@ export async function grantAccess(
       new Address(doctorAddress).toScVal(),
       docIdBytes,
       nativeToScVal(BigInt(expiresAt), { type: 'u64' }),
+      encKeyScVal,
     ],
     patient
   )
 
   return bytesToHex(new Uint8Array(scValToNative(retval) as ArrayBuffer))
+}
+
+export async function getEncryptedKey(tokenId: string): Promise<Uint8Array | null> {
+  const tokenBytes = xdr.ScVal.scvBytes(hexToBytes(tokenId))
+  const retval = await readOnly('get_encrypted_key', [tokenBytes])
+  const raw = scValToNative(retval) as Uint8Array | null
+  return raw ? new Uint8Array(raw) : null
 }
 
 export async function verifyAccess(tokenId: string, doctorAddress: string): Promise<boolean> {

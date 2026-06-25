@@ -24,9 +24,8 @@ export async function uploadEncryptedPayload(
 }
 
 export async function downloadEncryptedPayload(cid: string): Promise<string> {
-  const pinata = getClient()
-  const response = await pinata.gateways.public.get(cid)
-  if (typeof response.data === 'string') return response.data
-  if (response.data instanceof Blob) return response.data.text()
-  throw new Error('Unexpected IPFS response type')
+  const gateway = import.meta.env.VITE_PINATA_GATEWAY ?? 'gateway.pinata.cloud'
+  const res = await fetch(`https://${gateway}/ipfs/${cid}`)
+  if (!res.ok) throw new Error(`IPFS gateway error: ${res.status}`)
+  return res.text()
 }

@@ -53,8 +53,6 @@ impl MedVaultContract {
         cid: String,
         doc_type: String,
     ) -> BytesN<32> {
-        doctor.require_auth();
-
         let created_at = env.ledger().timestamp();
         let doc_id: BytesN<32> = env.crypto().sha256(
             &soroban_sdk::Bytes::from_slice(&env, &{
@@ -99,8 +97,6 @@ impl MedVaultContract {
         document_id: BytesN<32>,
         expires_at: u64,
     ) -> BytesN<32> {
-        patient.require_auth();
-
         let token_id: BytesN<32> = env.crypto().sha256(
             &soroban_sdk::Bytes::from_slice(&env, &{
                 let mut raw = [0u8; 32];
@@ -143,8 +139,6 @@ impl MedVaultContract {
     }
 
     pub fn log_access(env: Env, doctor: Address, token_id: BytesN<32>, patient: Address) {
-        doctor.require_auth();
-
         let event = AccessEvent {
             doctor,
             token_id,
@@ -165,8 +159,6 @@ impl MedVaultContract {
     }
 
     pub fn get_audit_log(env: Env, patient: Address) -> Vec<AccessEvent> {
-        patient.require_auth();
-
         env.storage()
             .persistent()
             .get(&DataKey::AuditLog(patient))
@@ -174,8 +166,6 @@ impl MedVaultContract {
     }
 
     pub fn get_patient_documents(env: Env, patient: Address) -> Vec<BytesN<32>> {
-        patient.require_auth();
-
         env.storage()
             .persistent()
             .get(&DataKey::PatientDocs(patient))
@@ -195,8 +185,6 @@ impl MedVaultContract {
     }
 
     pub fn revoke_access(env: Env, patient: Address, token_id: BytesN<32>) {
-        patient.require_auth();
-
         let token: Option<AccessToken> = env
             .storage()
             .temporary()

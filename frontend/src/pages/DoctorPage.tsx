@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useWallet } from '@/contexts/WalletContext'
 import { DoctorAccess } from '@/components/DoctorAccess'
@@ -10,11 +10,12 @@ import { cn } from '@/lib/utils'
 
 type Tab = 'upload' | 'records'
 
-function readKeyFromHash(): string | null {
+function readWKFromHash(): string | null {
   const hash = window.location.hash
-  if (!hash.startsWith('#key=')) return null
+  const prefix = hash.startsWith('#wk=') ? '#wk=' : hash.startsWith('#key=') ? '#key=' : null
+  if (!prefix) return null
   try {
-    return decodeURIComponent(hash.slice(5))
+    return decodeURIComponent(hash.slice(prefix.length))
   } catch {
     return null
   }
@@ -24,8 +25,14 @@ export function DoctorPage() {
   const { state } = useWallet()
   const [searchParams] = useSearchParams()
   const tokenId = searchParams.get('token')
-  const [encryptionKey] = useState<string | null>(readKeyFromHash)
+  const [encryptionKey] = useState<string | null>(readWKFromHash)
   const [tab, setTab] = useState<Tab>('upload')
+
+  useEffect(() => {
+    if (window.location.hash.startsWith('#wk=') || window.location.hash.startsWith('#key=')) {
+      history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
+  }, [])
 
   if (state.status !== 'connected') {
     return (

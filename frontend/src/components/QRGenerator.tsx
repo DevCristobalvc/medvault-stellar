@@ -40,7 +40,7 @@ export function QRGenerator({ tokenId, expiresAt, encryptionKey, baseUrl }: QRGe
 
   const base = `${baseUrl ?? window.location.origin}/doctor?token=${tokenId}`
   const url = encryptionKey
-    ? `${base}#key=${encodeURIComponent(encryptionKey)}`
+    ? `${base}#wk=${encodeURIComponent(encryptionKey)}`
     : base
 
   function download() {

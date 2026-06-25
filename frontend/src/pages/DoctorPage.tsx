@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useWallet } from '@/contexts/WalletContext'
 import { DoctorAccess } from '@/components/DoctorAccess'
+import { DoctorRecords } from '@/components/DoctorRecords'
 import { DocumentUpload } from '@/components/DocumentUpload'
 import { WalletConnect } from '@/components/WalletConnect'
-import { Stethoscope } from 'lucide-react'
+import { Stethoscope, Upload, FolderOpen } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+type Tab = 'upload' | 'records'
 
 function readKeyFromHash(): string | null {
   const hash = window.location.hash
@@ -21,12 +25,7 @@ export function DoctorPage() {
   const [searchParams] = useSearchParams()
   const tokenId = searchParams.get('token')
   const [encryptionKey] = useState<string | null>(readKeyFromHash)
-
-  useEffect(() => {
-    if (window.location.hash.startsWith('#key=')) {
-      history.replaceState(null, '', window.location.pathname + window.location.search)
-    }
-  }, [])
+  const [tab, setTab] = useState<Tab>('upload')
 
   if (state.status !== 'connected') {
     return (
@@ -58,9 +57,30 @@ export function DoctorPage() {
   }
 
   return (
-    <div className="px-5 py-6 md:px-8 max-w-lg mx-auto">
-      <h1 className="text-xl font-semibold tracking-tight mb-6">New Record</h1>
-      <DocumentUpload />
+    <div className="px-5 py-6 md:px-8 max-w-lg mx-auto flex flex-col gap-5">
+      <div className="flex gap-1 p-0.5 bg-muted rounded-lg">
+        {([
+          { id: 'upload', label: 'New Record', icon: Upload },
+          { id: 'records', label: 'Shared with me', icon: FolderOpen },
+        ] as { id: Tab; label: string; icon: React.ElementType }[]).map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-1.5 rounded-md py-2 text-xs font-medium transition-colors',
+              tab === id
+                ? 'bg-background shadow-sm text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'upload' && <DocumentUpload />}
+      {tab === 'records' && <DoctorRecords doctorPublicKey={state.publicKey} />}
     </div>
   )
 }

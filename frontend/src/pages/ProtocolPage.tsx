@@ -5,7 +5,7 @@ import { t, type Lang } from '@/lib/i18n'
 
 interface ProtocolPageProps { lang: Lang }
 
-const CONTRACT_ID = 'CBJRPRWI5TFFDXMYWQMET2WZ6J4N7QEZ6VPWDEGFZ2OJBR543GDM7PFB'
+const CONTRACT_ID = 'CD7PQB2M4HBUWI4HS52PKC3ALNEXUTUJTUHHXFI6NH3BPORJAYWMSPOX'
 
 const ENDPOINTS = [
   { fn: 'register_document', auth: 'Doctor',   storage: 'Persistent', desc: { en: 'Register encrypted CID on-chain', es: 'Registra CID cifrado on-chain', pt: 'Registra CID cifrado on-chain' } },

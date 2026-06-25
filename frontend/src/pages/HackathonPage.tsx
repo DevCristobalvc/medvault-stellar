@@ -6,7 +6,7 @@ import { t, type Lang } from '@/lib/i18n'
 
 interface HackathonPageProps { lang: Lang }
 
-const CONTRACT_ID = 'CBJRPRWI5TFFDXMYWQMET2WZ6J4N7QEZ6VPWDEGFZ2OJBR543GDM7PFB'
+const CONTRACT_ID = 'CD7PQB2M4HBUWI4HS52PKC3ALNEXUTUJTUHHXFI6NH3BPORJAYWMSPOX'
 const REPO_URL = 'https://github.com/DevCristobalvc/medvault-stellar'
 const DEMO_URL = 'https://frontend-eight-virid-j7gyqph2tp.vercel.app'
 const EXPLORER_URL = `https://stellar.expert/explorer/testnet/contract/${CONTRACT_ID}`

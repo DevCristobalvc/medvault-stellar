@@ -4,9 +4,10 @@
 
 **MedVault** gives patients full control over their medical history. Records are encrypted before leaving the browser, stored on IPFS, and access is governed by time-bound smart contracts on Stellar. Every read is logged on-chain — immutably.
 
+**Architecture:** [ARCHITECTURE.md](./ARCHITECTURE.md) — data model, crypto design, auth model, threat model  
 **Live demo:** https://frontend-eight-virid-j7gyqph2tp.vercel.app  
-**Contract (testnet):** `CDRD7JXJQ4X5G6N7NK5JDRZPVVXCTRWY3CYTKXUC64TCWZHG5DDJPJCE`  
-**Explorer:** https://stellar.expert/explorer/testnet/contract/CDRD7JXJQ4X5G6N7NK5JDRZPVVXCTRWY3CYTKXUC64TCWZHG5DDJPJCE
+**Contract (testnet):** `CAUUBZYILFYVHS2IYJDMXR4GUZ2LLYVWR25W7C5PXC7A5PF3QHIUWH2M`  
+**Explorer:** https://stellar.expert/explorer/testnet/contract/CAUUBZYILFYVHS2IYJDMXR4GUZ2LLYVWR25W7C5PXC7A5PF3QHIUWH2M
 
 ---
 
@@ -113,31 +114,33 @@ Every read event is written to **persistent storage** on Stellar. The patient ca
 
 **Language:** Rust (Soroban SDK v26)  
 **Network:** Stellar Testnet  
-**Contract ID:** `CDRZAYUCRV422YSP4PJVL4XTNNR7VSR6AMKVFRIQGXTZ2L57T47INFFC`
+**Contract ID:** `CAUUBZYILFYVHS2IYJDMXR4GUZ2LLYVWR25W7C5PXC7A5PF3QHIUWH2M`
 
 ### Functions
 
 | Function | Auth | Storage | Description |
 |---|---|---|---|
-| `register_document` | Doctor | Persistent | Register encrypted CID on-chain |
-| `grant_access` | Patient | Temporary | Generate time-bound access token (stores encrypted AES key) |
+| `register_document` | `doctor.require_auth()` | Persistent | Register encrypted CID on-chain |
+| `grant_access` | `patient.require_auth()` | Temporary | Generate time-bound access token (stores encrypted AES key) |
 | `verify_access` | None (read) | — | Check token validity and expiry |
-| `revoke_access` | Patient | Temporary | Delete token before expiry |
-| `log_access` | Doctor | Persistent | Record access event in audit log |
-| `get_audit_log` | Patient | — | Retrieve patient's access history |
-| `get_patient_documents` | Patient | — | List all document IDs for a patient |
+| `revoke_access` | `patient.require_auth()` | Temporary | Delete token before expiry |
+| `log_access` | `doctor.require_auth()` | Persistent | Record access event in audit log |
+| `get_audit_log` | None (read) | — | Retrieve patient's access history |
+| `get_patient_documents` | None (read) | — | List all document IDs for a patient |
 | `get_document` | None (read) | — | Get document metadata by ID |
 | `get_token_info` | None (read) | — | Resolve document_id from token |
 | `get_encrypted_key` | None (read) | — | Fetch on-chain encrypted AES key (KEM) |
-| `get_doctor_tokens` | Doctor | — | List access tokens issued to a doctor |
+| `get_doctor_tokens` | None (read) | — | List access tokens issued to a doctor |
 | `verify_zkp_proof` | None (read) | — | Groth16 verification via BLS12-381 pairing (CAP-0052) |
+
+> **Auth enforcement:** state-mutating calls invoke `require_auth()` on the acting `Address`, so a transaction only succeeds if the corresponding wallet signed it. Read functions carry no auth — Soroban ledger state is world-readable, so the privacy boundary is the *encryption layer*, not read-side access control.
 
 ### Tests
 
 ```bash
 cd contracts/medvault
 cargo test
-# 16 tests, 0 failures
+# 20 tests, 0 failures
 ```
 
 ---
@@ -201,7 +204,7 @@ stellar contract deploy \
 ## Environment Variables
 
 ```env
-VITE_CONTRACT_ID=CCQ65ECKUKP4SSSVRIHREFCU23SV3Y45O4WOBO34H3P6NUYQSR3RNXXV
+VITE_CONTRACT_ID=CAUUBZYILFYVHS2IYJDMXR4GUZ2LLYVWR25W7C5PXC7A5PF3QHIUWH2M
 VITE_SOROBAN_RPC=https://soroban-testnet.stellar.org
 VITE_PINATA_JWT=<your-pinata-jwt>
 VITE_PINATA_GATEWAY=gateway.pinata.cloud
@@ -211,10 +214,12 @@ VITE_PINATA_GATEWAY=gateway.pinata.cloud
 
 ## Security Model
 
-- **AES key never stored on-chain or on IPFS** — in MVP it is shared out-of-band between doctor and patient. V2 uses ECIES with the patient's Stellar public key.
-- **Decryption happens in RAM only** — the plaintext is never written to localStorage, IndexedDB, or service worker cache.
-- **Service worker explicitly excludes medical data** — Soroban RPC responses and IPFS content use `NetworkFirst` / `StaleWhileRevalidate` strategies with no sensitive caching.
-- **Time-bound tokens use Soroban's ledger timestamp** — not client-side JavaScript, making expiry tamper-proof.
+- **Plaintext never leaves the browser** — files are encrypted with AES-256-GCM (Web Crypto `SubtleCrypto`, 96-bit random IV per file) before any network call. IPFS and Stellar only ever see ciphertext or hashes.
+- **The AES key is wrapped, never stored in clear** — a random 256-bit wrapping key encrypts the AES key; the wrapped key is stored on-chain (`AccessToken.encrypted_key`) and the wrapping key travels only in the URL fragment (`#wk=`), which browsers never send to servers. Decryption requires *both* the on-chain token and the link.
+- **Write authorization is enforced on-chain** — `register_document`, `grant_access`, `log_access`, and `revoke_access` call `require_auth()` on the acting address. Soroban rejects the invocation unless that wallet authorized the call, so no third party can register documents, mint tokens, forge audit entries, or revoke another patient's grants.
+- **Expiry is tamper-proof** — `verify_access` compares against `env.ledger().timestamp()` (consensus ledger time), not client clocks. Tokens live in **temporary storage** and are evicted by the network after their TTL — no server-side invalidation job exists.
+- **Decryption happens in RAM only** — plaintext is never written to `localStorage`, `IndexedDB`, or the service-worker cache. The service worker uses `NetworkFirst` / `StaleWhileRevalidate` and explicitly excludes Soroban RPC and IPFS payloads from precaching.
+- **Audit trail is append-only** — every `log_access` writes to **persistent storage**; there is no contract path that mutates or deletes existing audit entries.
 
 ---
 
@@ -233,8 +238,8 @@ VITE_PINATA_GATEWAY=gateway.pinata.cloud
 medvault-stellar/
 ├── contracts/medvault/          # Soroban smart contract (Rust)
 │   └── contracts/medvault/src/
-│       ├── lib.rs               # Contract logic (7 functions)
-│       └── test.rs              # 7 unit tests
+│       ├── lib.rs               # Contract logic (12 functions)
+│       └── test.rs              # 20 unit tests
 ├── frontend/                    # React PWA
 │   ├── src/
 │   │   ├── components/          # UI components

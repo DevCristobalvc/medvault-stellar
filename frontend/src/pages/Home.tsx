@@ -2,6 +2,7 @@ import { ShieldCheck, ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { buttonVariants } from '@/components/ui/button'
+import { StarField } from '@/components/StarField'
 import { cn } from '@/lib/utils'
 import { t, type Lang } from '@/lib/i18n'
 
@@ -36,6 +37,8 @@ export function Home({ lang }: HomeProps) {
 
       <section className="relative flex flex-col items-center text-center gap-6 px-5 pt-16 pb-12 md:pt-24 md:pb-16">
 
+        <StarField className="opacity-70" />
+
         {!reduced && (
           <>
             <motion.div
@@ -64,7 +67,7 @@ export function Home({ lang }: HomeProps) {
           initial={reduced ? false : { opacity: 0, scale: 0.85 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="relative"
+          className="relative z-10"
         >
           <motion.div
             animate={reduced ? {} : { boxShadow: ['0 0 0 0 rgba(27,79,216,0)', '0 0 0 10px rgba(27,79,216,0.08)', '0 0 0 0 rgba(27,79,216,0)'] }}
@@ -79,7 +82,7 @@ export function Home({ lang }: HomeProps) {
           initial={reduced ? false : { opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4, delay: 0.2 }}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background-soft px-3 py-1 text-xs text-muted-foreground"
+          className="relative z-10 inline-flex items-center gap-1.5 rounded-full border border-border bg-background-soft px-3 py-1 text-xs text-muted-foreground"
         >
           <motion.span
             animate={reduced ? {} : { opacity: [1, 0.4, 1] }}
@@ -93,7 +96,7 @@ export function Home({ lang }: HomeProps) {
           variants={reduced ? undefined : stagger}
           initial="hidden"
           animate="visible"
-          className="text-3xl md:text-5xl font-semibold tracking-tight max-w-xl leading-tight"
+          className="relative z-10 text-3xl md:text-5xl font-semibold tracking-tight max-w-xl leading-tight"
         >
           {words.map((word, i) => {
             const isLast = i === words.length - 1
@@ -113,7 +116,7 @@ export function Home({ lang }: HomeProps) {
           variants={reduced ? undefined : fadeUp(0.5)}
           initial="hidden"
           animate="visible"
-          className="text-muted-foreground text-base max-w-md leading-relaxed"
+          className="relative z-10 text-muted-foreground text-base max-w-md leading-relaxed"
         >
           {t('home', 'sub', lang)}
         </motion.p>
@@ -122,7 +125,7 @@ export function Home({ lang }: HomeProps) {
           variants={reduced ? undefined : fadeUp(0.7)}
           initial="hidden"
           animate="visible"
-          className="flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-none sm:w-auto"
+          className="relative z-10 flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-none sm:w-auto"
         >
           <Link to="/patient" className={cn(buttonVariants({ size: 'lg' }), 'w-full sm:w-auto gap-2')}>
             {t('home', 'cta_vault', lang)}
@@ -144,8 +147,8 @@ export function Home({ lang }: HomeProps) {
         transition={{ duration: 0.5, delay: 0.1 }}
         className="px-5 pb-12 flex justify-center"
       >
-        <Link to="/problem" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5')}>
-          {t('problem', 'badge', lang)}
+        <Link to="/hackathon" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5')}>
+          {t('hackathon', 'badge', lang)}
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </motion.div>

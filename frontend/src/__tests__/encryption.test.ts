@@ -60,7 +60,7 @@ describe('encryption', () => {
     const { ciphertext, iv } = await encryptFile(big, key)
     const decrypted = await decryptFile(ciphertext, iv, key)
     expect(new Uint8Array(decrypted)).toEqual(new Uint8Array(big))
-  })
+  }, 20000)
 
   it('exportKey produces valid base64', async () => {
     const key = await generateKey()

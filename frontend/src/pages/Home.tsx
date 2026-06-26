@@ -1,4 +1,4 @@
-import { ShieldCheck, ArrowRight } from 'lucide-react'
+import { ShieldCheck, ArrowRight, Fingerprint } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { buttonVariants } from '@/components/ui/button'
@@ -175,6 +175,16 @@ export function Home({ lang }: HomeProps) {
         <p className="text-center text-sm font-medium text-primary mt-4 max-w-md mx-auto">
           {t('home', 'journey_tagline', lang)}
         </p>
+        <Link
+          to="/protocol"
+          className="mt-5 flex items-start gap-2.5 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 max-w-lg mx-auto transition-colors hover:bg-accent/10"
+        >
+          <Fingerprint className="h-4 w-4 text-accent-foreground shrink-0 mt-0.5" />
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {t('home', 'zk_line', lang)}
+          </p>
+          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5 ml-auto" />
+        </Link>
       </motion.section>
 
       <motion.div

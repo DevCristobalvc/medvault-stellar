@@ -40,6 +40,7 @@ const translations = {
     journey_s5:       { en: 'Reads on screen only', es: 'Lee solo en pantalla', pt: 'Lê só na tela' },
     journey_s6:       { en: 'Audit log — who read it and when', es: 'Bitácora — quién leyó y cuándo', pt: 'Registro — quem leu e quando' },
     journey_tagline:  { en: 'You decide who sees your history, and for how long.', es: 'Tú decides quién ve tu historia, y por cuánto tiempo.', pt: 'Você decide quem vê seu histórico, e por quanto tempo.' },
+    zk_line:          { en: 'Doctors prove they are authorized with a zero-knowledge proof — verified on-chain, without revealing their identity.', es: 'Los médicos demuestran que están autorizados con una prueba de conocimiento cero — verificada on-chain, sin revelar su identidad.', pt: 'Os médicos provam que estão autorizados com uma prova de conhecimento zero — verificada on-chain, sem revelar sua identidade.' },
   },
   problem: {
     badge:    { en: 'The Problem', es: 'El Problema', pt: 'O Problema' },

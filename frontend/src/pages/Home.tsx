@@ -3,10 +3,26 @@ import { Link } from 'react-router-dom'
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { buttonVariants } from '@/components/ui/button'
 import { StarField } from '@/components/StarField'
+import { MermaidDiagram } from '@/components/MermaidDiagram'
 import { cn } from '@/lib/utils'
 import { t, type Lang } from '@/lib/i18n'
 
 interface HomeProps { lang: Lang }
+
+function journeyChart(lang: Lang): string {
+  const m = (k: string) => t('home', k, lang)
+  return `sequenceDiagram
+  participant P as ${m('journey_patient')}
+  participant S as ${m('journey_stellar')}
+  participant D as ${m('journey_doctor')}
+  P->>S: ${m('journey_s1')}
+  Note over P,S: ${m('journey_note')}
+  P->>D: ${m('journey_s2')}
+  D->>S: ${m('journey_s3')}
+  S-->>D: ${m('journey_s4')}
+  D->>D: ${m('journey_s5')}
+  S-->>P: ${m('journey_s6')}`
+}
 
 const ease = [0.22, 1, 0.36, 1] as [number, number, number, number]
 
@@ -139,6 +155,27 @@ export function Home({ lang }: HomeProps) {
           </Link>
         </motion.div>
       </section>
+
+      <motion.section
+        initial={reduced ? false : { opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-60px' }}
+        transition={{ duration: 0.5, ease }}
+        className="relative z-10 px-5 pb-12 w-full max-w-2xl mx-auto"
+      >
+        <div className="text-center mb-5">
+          <h2 className="text-xl md:text-2xl font-semibold tracking-tight">
+            {t('home', 'journey_h', lang)}
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-md mx-auto leading-relaxed">
+            {t('home', 'journey_sub', lang)}
+          </p>
+        </div>
+        <MermaidDiagram chart={journeyChart(lang)} id={`journey-${lang}`} />
+        <p className="text-center text-sm font-medium text-primary mt-4 max-w-md mx-auto">
+          {t('home', 'journey_tagline', lang)}
+        </p>
+      </motion.section>
 
       <motion.div
         initial={reduced ? false : { opacity: 0, y: 8 }}

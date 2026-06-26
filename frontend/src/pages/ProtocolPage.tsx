@@ -14,7 +14,7 @@ import {
 
 interface ProtocolPageProps { lang: Lang }
 
-const CONTRACT_ID = 'CAB7UE4NE2PJHKDQJ4PXITOTHACPVSA2TQ6AMCNV2WZHIWTSZ5LU4B54'
+const CONTRACT_ID = 'CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK'
 
 const ENDPOINTS = [
   { fn: 'register_document', auth: 'Doctor',   storage: 'Persistent', desc: { en: 'Register encrypted CID on-chain', es: 'Registra CID cifrado on-chain', pt: 'Registra CID cifrado on-chain' } },
@@ -70,7 +70,7 @@ const ACCESS_DIAGRAM = `sequenceDiagram
 
 const INTEGRATION_CODE = `import { Contract, Networks, rpc } from '@stellar/stellar-sdk'
 
-const CONTRACT = 'CAB7UE4NE2PJHKDQJ4PXITOTHACPVSA2TQ6AMCNV2WZHIWTSZ5LU4B54'
+const CONTRACT = 'CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK'
 const server = new rpc.Server('https://soroban-testnet.stellar.org')
 const contract = new Contract(CONTRACT)
 

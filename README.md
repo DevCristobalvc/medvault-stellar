@@ -6,8 +6,8 @@
 
 **Architecture:** [ARCHITECTURE.md](./ARCHITECTURE.md) — data model, crypto design, auth model, threat model  
 **Live demo:** https://medvault-stellar.vercel.app  
-**Contract (testnet):** `CAB7UE4NE2PJHKDQJ4PXITOTHACPVSA2TQ6AMCNV2WZHIWTSZ5LU4B54`  
-**Explorer:** https://stellar.expert/explorer/testnet/contract/CAB7UE4NE2PJHKDQJ4PXITOTHACPVSA2TQ6AMCNV2WZHIWTSZ5LU4B54
+**Contract (testnet):** `CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK`  
+**Explorer:** https://stellar.expert/explorer/testnet/contract/CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK
 
 ---
 
@@ -114,7 +114,7 @@ Every read event is written to **persistent storage** on Stellar. The patient ca
 
 **Language:** Rust (Soroban SDK v26)  
 **Network:** Stellar Testnet  
-**Contract ID:** `CAB7UE4NE2PJHKDQJ4PXITOTHACPVSA2TQ6AMCNV2WZHIWTSZ5LU4B54`
+**Contract ID:** `CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK`
 
 ### Functions
 
@@ -204,7 +204,7 @@ stellar contract deploy \
 ## Environment Variables
 
 ```env
-VITE_CONTRACT_ID=CAB7UE4NE2PJHKDQJ4PXITOTHACPVSA2TQ6AMCNV2WZHIWTSZ5LU4B54
+VITE_CONTRACT_ID=CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK
 VITE_SOROBAN_RPC=https://soroban-testnet.stellar.org
 VITE_PINATA_JWT=<your-pinata-jwt>
 VITE_PINATA_GATEWAY=gateway.pinata.cloud

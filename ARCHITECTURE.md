@@ -3,7 +3,7 @@
 Technical reference for the MedVault protocol: a patient-sovereign medical-records system where data is encrypted client-side, stored on IPFS, and gated by time-bound access tokens on a Stellar Soroban contract.
 
 - **Network:** Stellar Testnet
-- **Contract ID:** `CAUUBZYILFYVHS2IYJDMXR4GUZ2LLYVWR25W7C5PXC7A5PF3QHIUWH2M`
+- **Contract ID:** `CAB7UE4NE2PJHKDQJ4PXITOTHACPVSA2TQ6AMCNV2WZHIWTSZ5LU4B54`
 - **Contract:** Rust / Soroban SDK v26 — 12 functions, 20 unit tests
 - **Frontend:** React 19 + TypeScript + Vite, PWA
 

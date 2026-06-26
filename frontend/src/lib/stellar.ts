@@ -12,7 +12,7 @@ import {
 import { getKitAddress, signTx } from '@/lib/walletKit'
 
 const RPC_URL = import.meta.env.VITE_SOROBAN_RPC?.trim() || 'https://soroban-testnet.stellar.org'
-const CONTRACT_ID = import.meta.env.VITE_CONTRACT_ID?.trim() || 'CAUUBZYILFYVHS2IYJDMXR4GUZ2LLYVWR25W7C5PXC7A5PF3QHIUWH2M'
+const CONTRACT_ID = import.meta.env.VITE_CONTRACT_ID?.trim() || 'CAB7UE4NE2PJHKDQJ4PXITOTHACPVSA2TQ6AMCNV2WZHIWTSZ5LU4B54'
 const NETWORK_PASSPHRASE = Networks.TESTNET
 
 export interface Document {

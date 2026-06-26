@@ -229,12 +229,13 @@ VITE_PINATA_GATEWAY=gateway.pinata.cloud
 
 - **Curve/encoding** — G1 points are 96 bytes (`x‖y`, 48 each, big-endian); G2 points are 192 bytes with Fp2 components in `c1`-first order (`x.c1‖x.c0‖y.c1‖y.c0`), matching Stellar's zkcrypto serialization.
 - **Pairing equation** — `e(−A, B)·e(α, β)·e(L, γ)·e(C, δ) = 1`, where `L = IC₀ + root·IC₁` (single public input: the Merkle root).
-- **JS prover** — Poseidon must be computed over the BLS12-381 scalar field with circomlib's *optimized* round constants (sparse MDS), not the BN254 defaults shipped by `circomlibjs`; see `zkp-jwt/stellar/test/bls_poseidon.mjs`.
-- **Reproduce** — `cd zkp-jwt/stellar && DUMP_FIXTURE=1 node test/verify_onchain.mjs` generates a real proof and invokes the deployed contract; returns `true`. The live demo verifies a bundled proof on-chain from the Protocol page.
+- **Prover** — Poseidon must be computed over the BLS12-381 scalar field with circomlib's *optimized* round constants (sparse MDS), not the BN254 defaults shipped by `circomlibjs`. The browser implements it in pure `BigInt` (`frontend/src/lib/zkp/poseidon.ts`); the Node reference is `zkp-jwt/stellar/test/bls_poseidon.mjs`.
+- **In-browser proving** — the Protocol page generates the full Groth16 proof client-side with snarkjs (circuit wasm + zkey served statically, read via HTTP Range), then calls `verify_zkp_proof` on the live contract. End-to-end (build Merkle tree → prove → on-chain verify) runs in ~2 s.
+- **Reproduce (Node)** — `cd zkp-jwt/stellar && DUMP_FIXTURE=1 node test/verify_onchain.mjs` generates a proof and invokes the deployed contract; returns `true`.
 
 ## Roadmap — v2
 
-- **In-browser proving** — ship the circuit wasm + zkey to generate the membership proof client-side (currently a precomputed proof is verified live on-chain).
+- **Production trusted setup** — the current zkey uses a single dev contribution; a multi-party ceremony is required before mainnet.
 - **ECIES key exchange** — encrypt the AES key with the patient's Stellar public key, eliminating out-of-band key sharing.
 - **Multi-document vault** — version history, document categories, revocation.
 - **Stellar Anchor integration** — for identity verification and KYC.

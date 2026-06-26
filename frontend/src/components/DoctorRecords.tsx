@@ -200,7 +200,7 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
                 </div>
                 <p className="text-[10px] text-muted-foreground text-center mt-3">
-                  Visible in this session only — not saved locally.
+                  Clinical content stays in memory — never written to this device.
                 </p>
               </>
             ) : null}

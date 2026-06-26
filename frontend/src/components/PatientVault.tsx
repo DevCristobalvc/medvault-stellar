@@ -137,11 +137,10 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
   }
 
   function showExistingTokenQR(token: ActiveToken) {
-    const encryptionKey = getDocumentKey(token.documentId)
     setGrantState({
       docId: token.documentId,
       doctorAddress: token.doctorAddress,
-      encryptionKey,
+      encryptionKey: token.wrappingKey ?? null,
       tokenId: token.tokenId,
       expiresAt: token.expiresAt,
       step: 'done',
@@ -157,18 +156,22 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
 
   async function handleGrantAccess(durationSeconds: number) {
     if (!grantState) return
+    const keyB64 = getDocumentKey(grantState.docId)
+    if (!keyB64) {
+      setGrantState((s) => s && {
+        ...s,
+        step: 'error',
+        error: 'Encryption key for this document is not on this device. Share access from the device or browser where it was uploaded.',
+      })
+      return
+    }
     const expiresAt = Math.floor(Date.now() / 1000) + durationSeconds
     setGrantState((s) => s && { ...s, step: 'loading', expiresAt })
     try {
-      const keyB64 = getDocumentKey(grantState.docId)
-      let encryptedKeyBytes: Uint8Array = new Uint8Array(60)
-      let wk: Uint8Array | null = null
-
-      if (keyB64) {
-        const aesKey = await importKey(keyB64)
-        wk = generateWrappingKey()
-        encryptedKeyBytes = await encryptKeyWithWK(aesKey, wk)
-      }
+      const aesKey = await importKey(keyB64)
+      const wk = generateWrappingKey()
+      const encryptedKeyBytes = await encryptKeyWithWK(aesKey, wk)
+      const wrappingKeyB64 = wkToBase64(wk)
 
       const tokenId = await grantAccess(
         grantState.doctorAddress,
@@ -177,12 +180,12 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
         encryptedKeyBytes
       )
 
-      const wrappingKeyB64 = wk ? wkToBase64(wk) : null
       saveActiveToken({
         tokenId,
         documentId: grantState.docId,
         doctorAddress: grantState.doctorAddress,
         expiresAt,
+        wrappingKey: wrappingKeyB64,
       })
       setActiveTokens(getActiveTokens(grantState.docId))
       setGrantState((s) => s && {
@@ -296,7 +299,16 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
                 Grant new access
               </p>
 
-              {grantState?.step === 'address' && (
+              {grantState?.step === 'address' && grantState.encryptionKey === null && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+                  <p className="text-xs text-amber-700 flex items-start gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    The encryption key for this document isn&apos;t on this device. Share access from the device or browser where it was uploaded.
+                  </p>
+                </div>
+              )}
+
+              {grantState?.step === 'address' && grantState.encryptionKey !== null && (
                 <div className="flex flex-col gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="doctor-addr" className="flex items-center gap-1.5 text-sm">

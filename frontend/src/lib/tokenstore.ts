@@ -6,6 +6,7 @@ export interface ActiveToken {
   doctorAddress: string
   expiresAt: number
   grantedAt: number
+  wrappingKey?: string | null
 }
 
 function load(): ActiveToken[] {

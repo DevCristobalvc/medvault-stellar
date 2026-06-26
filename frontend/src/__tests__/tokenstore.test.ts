@@ -66,6 +66,12 @@ describe('tokenstore', () => {
     expect(token.grantedAt).toBe(NOW)
   })
 
+  it('persists the wrapping key for QR regeneration', () => {
+    saveActiveToken(makeToken({ wrappingKey: 'wk-base64' }))
+    const [token] = getActiveTokens('doc-1')
+    expect(token.wrappingKey).toBe('wk-base64')
+  })
+
   it('multiple doctors on same document', () => {
     saveActiveToken(makeToken({ tokenId: 'tok-1', doctorAddress: 'GDOC1' }))
     saveActiveToken(makeToken({ tokenId: 'tok-2', doctorAddress: 'GDOC2' }))

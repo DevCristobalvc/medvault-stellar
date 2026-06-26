@@ -128,7 +128,9 @@ impl MedVaultContract {
         env.storage().temporary().set(&DataKey::Token(token_id.clone()), &token);
 
         let ttl_seconds = expires_at.saturating_sub(env.ledger().timestamp());
-        let ttl_ledgers = ((ttl_seconds / 5) as u32).saturating_add(120);
+        let ttl_ledgers = ((ttl_seconds / 5) as u32)
+            .saturating_add(120)
+            .min(env.storage().max_ttl());
         env.storage()
             .temporary()
             .extend_ttl(&DataKey::Token(token_id.clone()), ttl_ledgers, ttl_ledgers);

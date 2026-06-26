@@ -3,7 +3,7 @@ import { PinataSDK } from 'pinata'
 function getClient(): PinataSDK {
   return new PinataSDK({
     pinataJwt: import.meta.env.VITE_PINATA_JWT,
-    pinataGateway: import.meta.env.VITE_PINATA_GATEWAY ?? 'gateway.pinata.cloud',
+    pinataGateway: import.meta.env.VITE_PINATA_GATEWAY?.trim() || 'gateway.pinata.cloud',
   })
 }
 
@@ -24,7 +24,7 @@ export async function uploadEncryptedPayload(
 }
 
 export async function downloadEncryptedPayload(cid: string): Promise<string> {
-  const gateway = import.meta.env.VITE_PINATA_GATEWAY ?? 'gateway.pinata.cloud'
+  const gateway = import.meta.env.VITE_PINATA_GATEWAY?.trim() || 'gateway.pinata.cloud'
   const res = await fetch(`https://${gateway}/ipfs/${cid}`)
   if (!res.ok) throw new Error(`IPFS gateway error: ${res.status}`)
   return res.text()

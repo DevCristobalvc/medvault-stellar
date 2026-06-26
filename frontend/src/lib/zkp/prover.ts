@@ -2,8 +2,9 @@ import { buildTree, getMerkleProof } from './merkle'
 import type { ZkProof } from '../stellar'
 import vkeyJson from './vkey_bls12381.json'
 
-const WASM_URL = '/zkp/merkle.wasm'
-const ZKEY_URL = '/zkp/merkle.zkey'
+const origin = typeof window !== 'undefined' ? window.location.origin : ''
+const WASM_URL = `${origin}/zkp/merkle.wasm`
+const ZKEY_URL = `${origin}/zkp/merkle.zkey`
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const vkey = vkeyJson as any
 

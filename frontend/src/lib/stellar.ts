@@ -9,7 +9,7 @@ import {
   nativeToScVal,
   Address,
 } from '@stellar/stellar-sdk'
-import { getAddress, signTransaction, isConnected, requestAccess } from '@stellar/freighter-api'
+import { getKitAddress, signTx } from '@/lib/walletKit'
 
 const RPC_URL = import.meta.env.VITE_SOROBAN_RPC?.trim() || 'https://soroban-testnet.stellar.org'
 const CONTRACT_ID = import.meta.env.VITE_CONTRACT_ID?.trim() || 'CAUUBZYILFYVHS2IYJDMXR4GUZ2LLYVWR25W7C5PXC7A5PF3QHIUWH2M'
@@ -41,6 +41,10 @@ function hexToBytes(hex: string): Uint8Array {
   return bytes
 }
 
+function scBytes(value: Uint8Array): xdr.ScVal {
+  return xdr.ScVal.scvBytes(value as unknown as Buffer)
+}
+
 function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, '0'))
@@ -48,9 +52,7 @@ function bytesToHex(bytes: Uint8Array): string {
 }
 
 async function getPublicKey(): Promise<string> {
-  const result = await getAddress()
-  if (result.error) throw new Error(result.error.message)
-  return result.address
+  return getKitAddress()
 }
 
 async function buildAndSubmit(
@@ -73,13 +75,9 @@ async function buildAndSubmit(
     .build()
 
   const prepared = await s.prepareTransaction(tx)
-  const signed = await signTransaction(prepared.toXDR(), {
-    networkPassphrase: NETWORK_PASSPHRASE,
-  })
+  const signedXdr = await signTx(prepared.toXDR())
 
-  if (signed.error) throw new Error(signed.error.message)
-
-  const signedTx = TransactionBuilder.fromXDR(signed.signedTxXdr, NETWORK_PASSPHRASE)
+  const signedTx = TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE)
   const result = await s.sendTransaction(signedTx)
 
   if (result.status === 'ERROR') throw new Error(`Transaction failed`)
@@ -136,16 +134,6 @@ async function readOnly(method: string, args: xdr.ScVal[]): Promise<xdr.ScVal> {
   return readOnlyFrom(method, args, await getPublicKey())
 }
 
-export async function walletConnected(): Promise<boolean> {
-  const conn = await isConnected()
-  return conn.isConnected
-}
-
-export async function connectWallet(): Promise<string> {
-  await requestAccess()
-  return getPublicKey()
-}
-
 export async function getWalletPublicKey(): Promise<string> {
   return getPublicKey()
 }
@@ -179,8 +167,8 @@ export async function grantAccess(
 ): Promise<string> {
   const patient = await getPublicKey()
 
-  const docIdBytes = xdr.ScVal.scvBytes(hexToBytes(documentId))
-  const encKeyScVal = xdr.ScVal.scvBytes(encryptedKey)
+  const docIdBytes = scBytes(hexToBytes(documentId))
+  const encKeyScVal = scBytes(encryptedKey)
   const retval = await buildAndSubmit(
     'grant_access',
     [
@@ -197,14 +185,14 @@ export async function grantAccess(
 }
 
 export async function getEncryptedKey(tokenId: string): Promise<Uint8Array | null> {
-  const tokenBytes = xdr.ScVal.scvBytes(hexToBytes(tokenId))
+  const tokenBytes = scBytes(hexToBytes(tokenId))
   const retval = await readOnly('get_encrypted_key', [tokenBytes])
   const raw = scValToNative(retval) as Uint8Array | null
   return raw ? new Uint8Array(raw) : null
 }
 
 export async function verifyAccess(tokenId: string, doctorAddress: string): Promise<boolean> {
-  const tokenBytes = xdr.ScVal.scvBytes(hexToBytes(tokenId))
+  const tokenBytes = scBytes(hexToBytes(tokenId))
   const retval = await readOnly('verify_access', [
     tokenBytes,
     new Address(doctorAddress).toScVal(),
@@ -214,7 +202,7 @@ export async function verifyAccess(tokenId: string, doctorAddress: string): Prom
 
 export async function logAccess(tokenId: string, patientAddress: string): Promise<void> {
   const doctor = await getPublicKey()
-  const tokenBytes = xdr.ScVal.scvBytes(hexToBytes(tokenId))
+  const tokenBytes = scBytes(hexToBytes(tokenId))
 
   await buildAndSubmit(
     'log_access',
@@ -259,7 +247,7 @@ export async function revokeAccess(tokenId: string, patientAddress: string): Pro
   const patient = await getPublicKey()
   if (patient !== patientAddress) throw new Error('Connected wallet does not match patient address')
 
-  const tokenBytes = xdr.ScVal.scvBytes(hexToBytes(tokenId))
+  const tokenBytes = scBytes(hexToBytes(tokenId))
   await buildAndSubmit(
     'revoke_access',
     [new Address(patient).toScVal(), tokenBytes],
@@ -275,7 +263,7 @@ export interface TokenInfo {
 }
 
 export async function getTokenInfo(tokenId: string): Promise<TokenInfo | null> {
-  const tokenBytes = xdr.ScVal.scvBytes(hexToBytes(tokenId))
+  const tokenBytes = scBytes(hexToBytes(tokenId))
   const retval = await readOnly('get_token_info', [tokenBytes])
   const raw = scValToNative(retval) as {
     doctor: string
@@ -307,7 +295,7 @@ export interface ZkProof {
 }
 
 export async function verifyZkpProof(proof: ZkProof): Promise<boolean> {
-  const b = (hex: string) => xdr.ScVal.scvBytes(hexToBytes(hex))
+  const b = (hex: string) => scBytes(hexToBytes(hex))
   const retval = await readOnlyFrom(
     'verify_zkp_proof',
     [
@@ -328,7 +316,7 @@ export async function verifyZkpProof(proof: ZkProof): Promise<boolean> {
 }
 
 export async function getDocument(documentId: string): Promise<Document | null> {
-  const docIdBytes = xdr.ScVal.scvBytes(hexToBytes(documentId))
+  const docIdBytes = scBytes(hexToBytes(documentId))
   const retval = await readOnly('get_document', [docIdBytes])
   const raw = scValToNative(retval) as {
     doctor: string

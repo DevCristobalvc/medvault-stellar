@@ -16,6 +16,7 @@ export VITE_PINATA_JWT="$(get VITE_PINATA_JWT)"
 export VITE_CONTRACT_ID="$(get VITE_CONTRACT_ID)"
 export VITE_SOROBAN_RPC="$(get VITE_SOROBAN_RPC)"
 export VITE_PINATA_GATEWAY="$(get VITE_PINATA_GATEWAY)"
+export VITE_WALLETCONNECT_PROJECT_ID="$(get VITE_WALLETCONNECT_PROJECT_ID)"
 
 vercel build --prod --yes
 vercel deploy --prebuilt --prod --yes

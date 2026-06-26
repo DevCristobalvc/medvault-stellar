@@ -43,7 +43,7 @@ export function DoctorPage() {
         <div>
           <h2 className="text-lg font-semibold">Doctor portal</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Connect your Freighter wallet to continue
+            Connect your Stellar wallet to continue
           </p>
         </div>
         <WalletConnect />

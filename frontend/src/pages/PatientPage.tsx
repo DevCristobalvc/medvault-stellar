@@ -15,7 +15,7 @@ export function PatientPage() {
         <div>
           <h2 className="text-lg font-semibold">Connect your wallet</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Connect Freighter to access your medical vault
+            Connect your Stellar wallet to access your medical vault
           </p>
         </div>
         <WalletConnect />

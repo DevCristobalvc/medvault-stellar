@@ -1,13 +1,14 @@
-import { Wallet, AlertTriangle, Loader2, LogOut, ChevronDown, RefreshCw } from 'lucide-react'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Wallet, AlertTriangle, Loader2, LogOut, ChevronDown } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useWallet } from '@/contexts/WalletContext'
 import { cn } from '@/lib/utils'
 import { useState, useRef, useEffect } from 'react'
 
 export function WalletConnect() {
-  const { state, freighterInstalled, connect, disconnect, truncate } = useWallet()
+  const { state, connect, disconnect, truncate } = useWallet()
   const [open, setOpen] = useState(false)
+  const [connecting, setConnecting] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -18,18 +19,15 @@ export function WalletConnect() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  if (freighterInstalled === false) {
-    return (
-      <a
-        href="https://freighter.app"
-        target="_blank"
-        rel="noreferrer"
-        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-2')}
-      >
-        <Wallet className="h-4 w-4" />
-        Install Freighter
-      </a>
-    )
+  async function handleConnect() {
+    setConnecting(true)
+    try {
+      await connect()
+    } catch {
+      /* user closed modal or rejected */
+    } finally {
+      setConnecting(false)
+    }
   }
 
   if (state.status === 'wrong_network') {
@@ -38,40 +36,6 @@ export function WalletConnect() {
         <AlertTriangle className="h-3 w-3" />
         Switch to Testnet
       </Badge>
-    )
-  }
-
-  if (state.status === 'disconnected_manual') {
-    return (
-      <div className="relative" ref={ref}>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setOpen((o) => !o)}
-          className="gap-2"
-        >
-          <Wallet className="h-4 w-4" />
-          Connect Wallet
-          <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
-        </Button>
-
-        {open && (
-          <div className="absolute right-0 top-full mt-1.5 w-64 rounded-lg border border-border bg-background shadow-md z-50 overflow-hidden">
-            <div className="px-3 py-2.5 border-b border-border bg-muted/30">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                To use a different account, switch the active account in your Freighter extension first.
-              </p>
-            </div>
-            <button
-              onClick={() => { connect(); setOpen(false) }}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
-            >
-              <RefreshCw className="h-3.5 w-3.5 text-primary" />
-              Connect with Freighter
-            </button>
-          </div>
-        )}
-      </div>
     )
   }
 
@@ -110,8 +74,8 @@ export function WalletConnect() {
   }
 
   return (
-    <Button size="sm" onClick={connect} className="gap-2">
-      {freighterInstalled === null ? (
+    <Button size="sm" onClick={handleConnect} disabled={connecting || state.status === 'idle'} className="gap-2">
+      {connecting || state.status === 'idle' ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
         <Wallet className="h-4 w-4" />

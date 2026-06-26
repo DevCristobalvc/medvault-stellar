@@ -19,6 +19,7 @@ function journeyChart(lang: Lang): string {
   Note over P,S: ${m('journey_note')}
   P->>D: ${m('journey_s2')}
   D->>S: ${m('journey_s3')}
+  Note over D,S: ${m('journey_zk')}
   S-->>D: ${m('journey_s4')}
   D->>D: ${m('journey_s5')}
   S-->>P: ${m('journey_s6')}`

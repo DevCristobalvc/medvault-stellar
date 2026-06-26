@@ -38,17 +38,30 @@ export function MermaidDiagram({ chart, id }: MermaidDiagramProps) {
 
     let cancelled = false
     init()
+    setFailed(false)
 
-    mermaid.render(`mermaid-${id}`, chart)
-      .then(({ svg }) => {
-        if (cancelled || !ref.current) return
-        ref.current.innerHTML = svg
-      })
-      .catch(() => {
-        if (!cancelled) setFailed(true)
-      })
+    const attempt = (tries: number) => {
+      mermaid
+        .render(`mermaid-${id}-${tries}`, chart)
+        .then(({ svg }) => {
+          if (cancelled || !ref.current) return
+          ref.current.innerHTML = svg
+        })
+        .catch(() => {
+          if (cancelled) return
+          if (tries < 3) {
+            setTimeout(() => attempt(tries + 1), 120 * (tries + 1))
+          } else {
+            setFailed(true)
+          }
+        })
+    }
 
-    return () => { cancelled = true }
+    const raf = requestAnimationFrame(() => attempt(0))
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(raf)
+    }
   }, [chart, id])
 
   if (failed) return null

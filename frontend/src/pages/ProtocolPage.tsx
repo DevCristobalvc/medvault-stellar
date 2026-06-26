@@ -35,6 +35,7 @@ const ARCH_DIAGRAM = `flowchart LR
   subgraph Client["Client (Browser)"]
     W[Freighter Wallet]
     E[AES-256-GCM]
+    Z[Groth16 ZK Prover]
   end
   subgraph Storage["Decentralized Storage"]
     I[IPFS via Pinata]
@@ -43,6 +44,8 @@ const ARCH_DIAGRAM = `flowchart LR
   W -->|sign tx| S
   E -->|ciphertext| I
   I -->|CID| S
+  Z -->|proof| S
+  S -->|BLS12-381 pairing check| S
   S -->|audit log| S`
 
 const ACCESS_DIAGRAM = `sequenceDiagram
@@ -55,6 +58,9 @@ const ACCESS_DIAGRAM = `sequenceDiagram
   P->>SC: grant_access(doctor, expires)
   SC-->>P: token_id
   P-->>D: QR with token + key
+  D->>D: generate ZK membership proof
+  D->>SC: verify_zkp_proof(proof)
+  SC-->>D: true (BLS12-381 pairing)
   D->>SC: verify_access(token)
   SC-->>D: true
   D->>IP: download(CID)

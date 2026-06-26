@@ -36,6 +36,7 @@ const translations = {
     journey_note:     { en: 'Only the patient holds the key', es: 'Solo el paciente tiene la llave', pt: 'Só o paciente tem a chave' },
     journey_s2:       { en: 'Shares a QR — access for 24h', es: 'Comparte un QR — acceso por 24h', pt: 'Compartilha um QR — acesso por 24h' },
     journey_s3:       { en: 'Scans and verifies access', es: 'Escanea y verifica el acceso', pt: 'Escaneia e verifica o acesso' },
+    journey_zk:       { en: 'Proves authorization privately (ZK)', es: 'Prueba que está autorizado sin revelar identidad (ZK)', pt: 'Prova que está autorizado sem revelar identidade (ZK)' },
     journey_s4:       { en: 'Access valid', es: 'Acceso válido', pt: 'Acesso válido' },
     journey_s5:       { en: 'Reads on screen only', es: 'Lee solo en pantalla', pt: 'Lê só na tela' },
     journey_s6:       { en: 'Audit log — who read it and when', es: 'Bitácora — quién leyó y cuándo', pt: 'Registro — quem leu e quando' },

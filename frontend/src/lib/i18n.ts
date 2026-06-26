@@ -18,7 +18,7 @@ const translations = {
   home: {
     badge:    { en: 'Built on Stellar Testnet', es: 'Construido en Stellar Testnet', pt: 'Construído na Stellar Testnet' },
     headline: { en: 'Your body, your records', es: 'Tu cuerpo, tus datos', pt: 'Seu corpo, seus dados' },
-    sub:      { en: 'MedVault is sovereign medical record infrastructure. AES-256 encrypted, IPFS stored, access governed by time-bound smart contracts on Stellar.', es: 'MedVault es infraestructura soberana de historias clínicas. Cifrado AES-256, almacenado en IPFS, acceso gobernado por contratos inteligentes en Stellar.', pt: 'MedVault é infraestrutura soberana de prontuários médicos. Cifrado AES-256, armazenado no IPFS, acesso governado por contratos inteligentes na Stellar.' },
+    sub:      { en: 'MedVault is sovereign medical record infrastructure. Doctors prove they are authorized with zero-knowledge proofs (ZKP) — verified on-chain, without revealing their identity. AES-256 encrypted, IPFS stored, governed by time-bound smart contracts on Stellar.', es: 'MedVault es infraestructura soberana de historias clínicas. Los médicos demuestran que están autorizados con pruebas de conocimiento cero (ZKP) — verificadas on-chain, sin revelar su identidad. Cifrado AES-256, almacenado en IPFS y gobernado por contratos inteligentes en Stellar.', pt: 'MedVault é infraestrutura soberana de prontuários médicos. Os médicos provam que estão autorizados com provas de conhecimento zero (ZKP) — verificadas on-chain, sem revelar sua identidade. Cifrado AES-256, armazenado no IPFS e governado por contratos inteligentes na Stellar.' },
     cta_vault:   { en: 'Open my Vault',    es: 'Abrir mi Bóveda',    pt: 'Abrir meu Cofre' },
     cta_upload:  { en: 'Upload a Record',  es: 'Subir Documento',    pt: 'Enviar Documento' },
     f1_title:    { en: 'Sovereign records',   es: 'Datos soberanos',       pt: 'Dados soberanos' },
@@ -69,7 +69,7 @@ const translations = {
     arch:      { en: 'System Architecture', es: 'Arquitectura del Sistema', pt: 'Arquitetura do Sistema' },
     flow:      { en: 'Access Flow', es: 'Flujo de Acceso', pt: 'Fluxo de Acesso' },
     integrate: { en: 'Integrate MedVault', es: 'Integrar MedVault', pt: 'Integrar MedVault' },
-    integrate_desc: { en: 'Any system can interact with the MedVault contract directly. No SDK required — just Stellar SDK and a Freighter-compatible wallet.', es: 'Cualquier sistema puede interactuar directamente con el contrato MedVault. Sin SDK propio — solo Stellar SDK y una wallet compatible con Freighter.', pt: 'Qualquer sistema pode interagir diretamente com o contrato MedVault. Sem SDK próprio — apenas o Stellar SDK e uma carteira compatível com Freighter.' },
+    integrate_desc: { en: 'Any system can interact with the MedVault contract directly. No SDK required — just the Stellar SDK and any Stellar wallet.', es: 'Cualquier sistema puede interactuar directamente con el contrato MedVault. Sin SDK propio — solo el Stellar SDK y cualquier wallet de Stellar.', pt: 'Qualquer sistema pode interagir diretamente com o contrato MedVault. Sem SDK próprio — apenas o Stellar SDK e qualquer carteira Stellar.' },
   },
   hackathon: {
     badge:    { en: 'Pitch Deck · Stellar PULSO', es: 'Pitch Deck · Stellar PULSO', pt: 'Pitch Deck · Stellar PULSO' },

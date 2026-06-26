@@ -33,7 +33,7 @@ const ENDPOINTS = [
 
 const ARCH_DIAGRAM = `flowchart LR
   subgraph Client["Client (Browser)"]
-    W[Freighter Wallet]
+    W[Stellar Wallet]
     E[AES-256-GCM]
     Z[Groth16 ZK Prover]
   end
@@ -80,7 +80,7 @@ const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: N
   .setTimeout(30).build()
 
 const prepared = await server.prepareTransaction(tx)
-// → sign with Freighter, submit`
+// → sign with any Stellar wallet, submit`
 
 type Desc = { en: string; es: string; pt: string }
 
@@ -307,7 +307,7 @@ export function ProtocolPage({ lang }: ProtocolPageProps) {
               {
                 version: 'v3 (planned)',
                 title: 'ECIES with Stellar public key',
-                desc: 'Wrapping key derived via X25519 ECDH using doctor\'s Stellar public key. No key in URL. Requires Freighter to expose X25519 derivation.',
+                desc: 'Wrapping key derived via X25519 ECDH using doctor\'s Stellar public key. No key in URL. Requires the wallet to expose X25519 derivation.',
                 status: 'planned',
               },
               {

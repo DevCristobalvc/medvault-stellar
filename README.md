@@ -5,7 +5,7 @@
 **MedVault** gives patients full control over their medical history. Records are encrypted before leaving the browser, stored on IPFS, and access is governed by time-bound smart contracts on Stellar. Every read is logged on-chain — immutably.
 
 **Architecture:** [ARCHITECTURE.md](./ARCHITECTURE.md) — data model, crypto design, auth model, threat model  
-**Live demo:** https://frontend-eight-virid-j7gyqph2tp.vercel.app  
+**Live demo:** https://medvault-stellar.vercel.app  
 **Contract (testnet):** `CAUUBZYILFYVHS2IYJDMXR4GUZ2LLYVWR25W7C5PXC7A5PF3QHIUWH2M`  
 **Explorer:** https://stellar.expert/explorer/testnet/contract/CAUUBZYILFYVHS2IYJDMXR4GUZ2LLYVWR25W7C5PXC7A5PF3QHIUWH2M
 
@@ -151,7 +151,7 @@ cargo test
 |---|---|
 | Smart contract | Rust + Soroban SDK v26 |
 | Blockchain | Stellar Testnet |
-| Wallet | Freighter (browser extension) |
+| Wallet | Stellar Wallets Kit (Freighter, xBull, Albedo, Rabet, Hana, LOBSTR, WalletConnect) |
 | Encryption | AES-256-GCM via Web Crypto API (no dependencies) |
 | Storage | IPFS via Pinata (free tier) |
 | Frontend | React 19 + TypeScript + Vite |
@@ -168,7 +168,7 @@ cargo test
 - Node.js 20+
 - Rust + `rustup target add wasm32v1-none`
 - Stellar CLI: `cargo install --locked stellar-cli`
-- Freighter wallet browser extension
+- A Stellar wallet (Freighter, xBull, Albedo, Rabet, Hana, LOBSTR, or WalletConnect)
 
 ### Frontend
 
@@ -236,6 +236,7 @@ VITE_PINATA_GATEWAY=gateway.pinata.cloud
 ## Roadmap — v2
 
 - **Production trusted setup** — the current zkey uses a single dev contribution; a multi-party ceremony is required before mainnet.
+- **TTL extension on `grant_access`** — call `extend_ttl` on the temporary token entry to guarantee it survives until `expires_at` for long-lived grants (e.g. the 7-day option), independent of the network's default temporary TTL.
 - **ECIES key exchange** — encrypt the AES key with the patient's Stellar public key, eliminating out-of-band key sharing.
 - **Multi-document vault** — version history, document categories, revocation.
 - **Stellar Anchor integration** — for identity verification and KYC.

@@ -1,77 +1,31 @@
 # MedVault ZKP Circuits
 
-## Current status
+> **Canonical location:** the production circuit, prover, on-chain verifier reference, and validation suite live in
+> [`zkp-jwt/stellar/`](https://github.com/DevCristobalvc/zkp-jwt/tree/Master/stellar). The `merkle_membership.circom`
+> in this folder is an **early snapshot** kept for historical reference only — it predates the Stellar port and the
+> soundness fix. Do not build from it.
 
-`merkle_membership.circom` — Merkle membership proof using Poseidon hash.
-Copied from `zkp-jwt/circuits/`. Originally built for Arbitrum Stylus (Groth16).
+## Status: deployed
 
-## What needs to change for Stellar/Soroban
+The zero-knowledge layer is live, not a plan:
 
-### 1. Hash function
-
-Current circuit uses Pedersen hash (from circomlib).
-Stellar's native `poseidon_hash` host function uses the same Poseidon construction.
-
-Change needed in circuit:
-```circom
-// FROM:
-include "circomlib/circuits/poseidon.circom";
-// TO: use poseidon directly — same interface, Stellar-native
-```
-
-Circuit is already using Poseidon in some versions — verify and align parameters.
-
-### 2. Proof system
-
-Current: Groth16 (from SnarkJS)
-Stellar native: BLS12-381 pairing operations available via host functions
-
-The Stellar contract can verify a Groth16 proof using BLS12-381 pairing:
-```rust
-// Groth16 verification equation:
-// e(A, B) = e(alpha, beta) * e(L(x), gamma) * e(C, delta)
-// Where e() = BLS12-381 pairing
-
-env.crypto().bls12_381_pairing(proof_a, proof_b)  // e(A, B)
-// etc.
-```
-
-### 3. Integration path
-
-Option A — RISC Zero (Nethermind deployment on Stellar):
-- Submit RISC Zero proof to the Stellar RISC Zero verifier contract
-- No need to implement pairing verification manually
-- Status: available since Sep 2025
-
-Option B — Manual Groth16 via BLS12-381 host functions:
-- Implement the 4-pairing verification equation in Rust
-- More work but self-contained
-- Status: feasible, ~2 weeks of work
-
-Option C — Interstellar (RatherLabs):
-- Circom → Soroban pipeline in development
-- Status: not yet production-ready
-
-### 4. Circuit parameters for MedVault v3
+- **Circuit:** `merkle_membership_stellar.circom` — Merkle membership over **BLS12-381 + Poseidon**, 10 levels,
+  5615 constraints. `pathIndices` are constrained to `{0,1}` (`pathIndices[i]·(1-pathIndices[i])===0`) to close the
+  circomlib `Mux1` selector under-constraint present in the old snapshot here.
+- **Proof system:** Groth16 (snarkjs), proved **in the browser** on the MedVault Protocol page.
+- **On-chain verifier:** `verify_zkp_proof` on contract `CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK`,
+  using Stellar's native BLS12-381 pairing (CAP-0052). The verification key is passed as a call argument, so the
+  circuit can be rotated without redeploying the contract.
 
 ```
 Private inputs:
-  - wallet_address: field  (doctor's Stellar wallet)
-  - merkle_path: field[10] (siblings in Merkle tree)
-  - path_indices: bit[10]  (left/right path indicators)
+  walletAddress : field      (doctor's Stellar wallet as a field element)
+  siblings[10]  : field      (Merkle path siblings)
+  pathIndices[10]: {0,1}     (left/right per level, range-checked)
 
-Public inputs:
-  - merkle_root: field     (stored on-chain)
-
-Output:
-  - valid: bool            (1 if doctor is in authorized set)
+Public input:
+  root : field               (Merkle root of the authorized set, stored on-chain)
 ```
 
-### 5. Deployment plan
-
-1. Compile circuit: `circom merkle_membership.circom --r1cs --wasm --sym`
-2. Trusted setup: `snarkjs groth16 setup merkle_membership.r1cs pot.ptau`
-3. Export verification key → convert to Soroban-compatible format
-4. Implement `verify_merkle_proof` in Rust using BLS12-381 host functions
-5. Generate proof in frontend (SnarkJS WASM)
-6. Submit proof to Soroban contract
+See [`zkp-jwt/stellar/README.md`](https://github.com/DevCristobalvc/zkp-jwt/blob/Master/stellar/README.md) for the
+circuit diagram, the prove/verify flow, and reproduction steps.

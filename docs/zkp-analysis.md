@@ -62,21 +62,26 @@ let rhs_3 = env.crypto().bls12_381_pairing(vec![&env, proof_c], vec![&env, delta
 // In practice: check lhs * inverse(rhs_1 * rhs_2 * rhs_3) == identity
 ```
 
-## Implementation effort estimate
+## Implementation status
 
-| Component | Effort | Status |
-|---|---|---|
-| Circom circuit (merkle_membership) | Done | ✅ Exists in zkp-jwt |
-| Trusted setup (ptau ceremony) | 2h | Generate with snarkjs |
-| Groth16 verifier in Soroban | 3-5 days | Not started |
-| Frontend proof generation (snarkjs) | 1-2 days | Adapt from zkp-jwt |
-| Integration + tests | 2-3 days | Not started |
-| **Total** | **~2 weeks** | — |
+This is no longer a plan — the full path below is **implemented and live**.
 
-## Recommended path for hackathon
+| Component | Status |
+|---|---|
+| Circom circuit (`merkle_membership_stellar`, BLS12-381, 5615 constraints) | ✅ `zkp-jwt/stellar/circuits/` |
+| Booleanity hardening (`pathIndices[i]·(1-pathIndices[i])===0`) | ✅ closes circomlib `Mux1` under-constraint |
+| Trusted setup (pot14 ptau, single dev contribution) | ✅ `zkp-jwt/stellar/build/` |
+| Groth16 verifier in Soroban (`verify_zkp_proof`) | ✅ deployed on `CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK` |
+| In-browser proof generation (snarkjs) | ✅ MedVault Protocol page (`frontend/src/lib/zkp/`) |
+| On-chain verification fixture + soundness suite | ✅ `zkp-jwt/stellar/test/{verify_onchain,validate_circuit}.mjs` |
 
-Use the `verify_zkp_proof` stub already in the contract + document the full implementation plan.
-For a real v3 deployment, follow the Groth16 verifier implementation using BLS12-381 above.
+## Notes for production (v2)
+
+- The deployed `verify_zkp_proof` is a **real Groth16 verifier**, not a stub: it runs the pairing equation above via
+  `env.crypto().bls12_381()` host functions. The verification key is passed as a call argument, so the circuit can be
+  rotated without redeploying the contract.
+- Before mainnet, replace the single-contribution `zkey` with a **multi-party Powers-of-Tau ceremony**.
+- See [`zkp-jwt/stellar/README.md`](../../zkp-jwt/stellar/README.md) for the circuit diagram and the full prove/verify flow.
 
 ## External resources
 

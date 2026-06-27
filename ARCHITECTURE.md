@@ -231,14 +231,15 @@ sequenceDiagram
 
 ---
 
-## 8. Zero-Knowledge Roadmap
+## 8. Zero-Knowledge Verification (deployed)
 
-The contract already ships a **real Groth16 verifier** running on Stellar's native BLS12-381 host functions (CAP-0052), not a stub.
+The contract ships a **real Groth16 verifier** running on Stellar's native BLS12-381 host functions (CAP-0052), not a stub, and the proof is generated **client-side in the browser**.
 
 - `verify_zkp_proof` performs the Groth16 pairing equation `e(-A, B) · e(α, β) · e(L, γ) · e(C, δ) == 1`, where `L = IC₀ + root · IC₁`.
-- Implemented with `env.crypto().bls12_381()`: `g1_mul`, `g1_add`, and a single `pairing_check` over the four G1/G2 pairs. G1 points are deserialized from 96 bytes, G2 from 192 bytes, scalars from `Bls12381Fr`.
-- **Target use:** a doctor proves membership in an authorized set (Merkle root of credentialed providers) without revealing which doctor they are. Circuit: `merkle_membership.circom`; Poseidon hashing is available natively (CAP-0075).
-- Integration-level proof generation/verification is exercised out-of-repo in `zkp-jwt/`; the on-chain function here is the verification endpoint.
+- Implemented with `env.crypto().bls12_381()`: `g1_mul`, `g1_add`, and a single `pairing_check` over the four G1/G2 pairs. G1 points are deserialized from 96 bytes, G2 from 192 bytes, scalars from `Bls12381Fr`. The verification key is passed as a call argument, so the circuit can be rotated **without redeploying the contract**.
+- **Use:** a doctor proves membership in an authorized set (Merkle root of credentialed providers) without revealing which doctor they are. Circuit: `merkle_membership_stellar.circom` (10 levels, 5615 constraints); Poseidon hashing runs over the BLS12-381 scalar field (CAP-0075 compatible).
+- **Soundness:** `pathIndices` are constrained to `{0,1}` (`pathIndices[i]·(1-pathIndices[i])===0`) to close an under-constraint in circomlib's `Mux1`, which does not range-check its selector.
+- **In-browser proving:** the Protocol page builds the Merkle tree, generates the Groth16 proof with snarkjs (wasm + zkey served statically), then calls `verify_zkp_proof` on the live contract — end-to-end in ~2 s. The circuit, the verifier reference, and the validation suite live in [`zkp-jwt/stellar/`](../zkp-jwt/stellar/README.md).
 
 ---
 

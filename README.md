@@ -227,6 +227,22 @@ VITE_PINATA_GATEWAY=gateway.pinata.cloud
 
 `verify_zkp_proof` runs a full Groth16 verification on-chain using Stellar's native BLS12-381 pairing host function — `env.crypto().bls12_381().pairing_check` (CAP-0052). The circuit (`merkle_membership_stellar.circom`, Poseidon over the BLS12-381 scalar field) proves a wallet belongs to the authorized-doctor Merkle set without revealing which member it is.
 
+```mermaid
+flowchart TB
+    WA["walletAddress (private)"] --> LH["Poseidon(1) → leaf"]
+    LH --> CH0["computedHash[0]"]
+    subgraph L["per level i = 0 .. 9"]
+        PI["pathIndices[i]"] --> BC{{"pathIndices[i]·(1-pathIndices[i]) === 0"}}
+        BC -. selector .-> MUX["Mux1 left/right + sibling[i]"]
+        CHi["computedHash[i]"] --> MUX
+        MUX --> H["Poseidon(2)"] --> CHn["computedHash[i+1]"]
+    end
+    CH0 --> L --> RC{{"root === computedHash[10]"}}
+    RT["root (public)"] --> RC --> OK["valid proof"]
+```
+
+The full circuit, its soundness/booleanity suite, and the on-chain verifier reference live in [`zkp-jwt/stellar/`](../zkp-jwt/stellar/README.md). `pathIndices` are explicitly constrained to `{0,1}` to close an under-constraint in circomlib's `Mux1` (its selector is otherwise not range-checked).
+
 - **Curve/encoding** — G1 points are 96 bytes (`x‖y`, 48 each, big-endian); G2 points are 192 bytes with Fp2 components in `c1`-first order (`x.c1‖x.c0‖y.c1‖y.c0`), matching Stellar's zkcrypto serialization.
 - **Pairing equation** — `e(−A, B)·e(α, β)·e(L, γ)·e(C, δ) = 1`, where `L = IC₀ + root·IC₁` (single public input: the Merkle root).
 - **Prover** — Poseidon must be computed over the BLS12-381 scalar field with circomlib's *optimized* round constants (sparse MDS), not the BN254 defaults shipped by `circomlibjs`. The browser implements it in pure `BigInt` (`frontend/src/lib/zkp/poseidon.ts`); the Node reference is `zkp-jwt/stellar/test/bls_poseidon.mjs`.

@@ -208,7 +208,7 @@ sequenceDiagram
     rect rgb(245,255,245)
     Note over P,SC: Grant (patient-signed)
     P->>B: select document + duration
-    B->>B: WK = random; encrypted_key = wrap(K, WK)
+    B->>B: WK = random, encrypted_key = wrap(K under WK)
     P->>SC: grant_access(patient, doctor2, document_id, expires_at, encrypted_key)  [patient.require_auth]
     SC-->>P: token_id
     P-->>D2: QR / link  /doctor?token=token_id#wk=WK

@@ -44,6 +44,16 @@ async function buildModules(): Promise<ModuleInterface[]> {
   return modules
 }
 
+async function prewarmFreighter(): Promise<void> {
+  if (typeof window === 'undefined') return
+  try {
+    const { isConnected } = await import('@stellar/freighter-api')
+    await isConnected()
+  } catch {
+    /* extension absent or asleep */
+  }
+}
+
 function ensureInit(): Promise<void> {
   if (!initPromise) {
     initPromise = buildModules().then((modules) => {
@@ -52,6 +62,7 @@ function ensureInit(): Promise<void> {
         network: Networks.TESTNET,
         selectedWalletId: localStorage.getItem(SELECTED_KEY) || undefined,
       })
+      void prewarmFreighter()
     })
   }
   return initPromise

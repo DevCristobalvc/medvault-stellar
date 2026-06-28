@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { PinataSDK } from 'pinata'
 
 interface UploadBody {

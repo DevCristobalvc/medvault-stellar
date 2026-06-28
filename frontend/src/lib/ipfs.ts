@@ -1,45 +1,47 @@
-import { PinataSDK } from 'pinata'
-
-function getClient(): PinataSDK {
-  return new PinataSDK({
-    pinataJwt: import.meta.env.VITE_PINATA_JWT,
-    pinataGateway: import.meta.env.VITE_PINATA_GATEWAY?.trim() || 'gateway.pinata.cloud',
-  })
-}
-
 const UPLOAD_TIMEOUT_MS = 60_000
-
-function withTimeout<T>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> {
-  return Promise.race([
-    Promise.resolve(promise),
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms)
-    ),
-  ])
-}
 
 export async function uploadEncryptedPayload(
   payload: string,
   metadata: { docType: string; patientAddress: string }
 ): Promise<string> {
-  if (!import.meta.env.VITE_PINATA_JWT) {
-    throw new Error('IPFS is not configured (missing VITE_PINATA_JWT).')
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS)
+
+  let res: Response
+  try {
+    res = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        payload,
+        docType: metadata.docType,
+        patientAddress: metadata.patientAddress,
+      }),
+      signal: controller.signal,
+    })
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new Error('IPFS upload timed out after 60s')
+    }
+    throw e
+  } finally {
+    clearTimeout(timer)
   }
 
-  const pinata = getClient()
-  const blob = new Blob([payload], { type: 'application/octet-stream' })
-  const file = new File([blob], 'record.enc', { type: 'application/octet-stream' })
+  if (!res.ok) {
+    let message = `IPFS upload failed (${res.status})`
+    try {
+      const data = await res.json()
+      if (data?.error) message = data.error
+    } catch {
+      message = `IPFS upload failed (${res.status})`
+    }
+    throw new Error(message)
+  }
 
-  const result = await withTimeout(
-    pinata.upload.public
-      .file(file)
-      .name(`medvault-${metadata.patientAddress.slice(0, 8)}-${Date.now()}`)
-      .keyvalues({ docType: metadata.docType, patient: metadata.patientAddress }),
-    UPLOAD_TIMEOUT_MS,
-    'IPFS upload'
-  )
-
-  return result.cid
+  const { cid } = (await res.json()) as { cid?: string }
+  if (!cid) throw new Error('IPFS upload returned no CID')
+  return cid
 }
 
 export async function downloadEncryptedPayload(cid: string): Promise<string> {

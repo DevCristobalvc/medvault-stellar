@@ -1,14 +1,16 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
-import { ShieldCheck, Stethoscope, Home as HomeIcon, FileText, Code2 } from 'lucide-react'
+import { ShieldCheck, Stethoscope, Home as HomeIcon, FileText, Code2, Loader2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { WalletConnect } from '@/components/WalletConnect'
 import { LanguageSelector } from '@/components/LanguageSelector'
-import { Home } from '@/pages/Home'
-import { PatientPage } from '@/pages/PatientPage'
-import { DoctorPage } from '@/pages/DoctorPage'
-import { ProtocolPage } from '@/pages/ProtocolPage'
-import { HackathonPage } from '@/pages/HackathonPage'
 import { useLanguage } from '@/hooks/useLanguage'
+
+const Home = lazy(() => import('@/pages/Home').then((m) => ({ default: m.Home })))
+const PatientPage = lazy(() => import('@/pages/PatientPage').then((m) => ({ default: m.PatientPage })))
+const DoctorPage = lazy(() => import('@/pages/DoctorPage').then((m) => ({ default: m.DoctorPage })))
+const ProtocolPage = lazy(() => import('@/pages/ProtocolPage').then((m) => ({ default: m.ProtocolPage })))
+const HackathonPage = lazy(() => import('@/pages/HackathonPage').then((m) => ({ default: m.HackathonPage })))
 import { WalletProvider } from '@/contexts/WalletContext'
 import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -101,16 +103,26 @@ function AnimatedRoutes({ lang }: { lang: ReturnType<typeof useLanguage>['lang']
         transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
         className="flex-1"
       >
-        <Routes location={location}>
-          <Route path="/"          element={<Home lang={lang} />} />
-          <Route path="/protocol"  element={<ProtocolPage lang={lang} />} />
-          <Route path="/patient"   element={<PatientPage />} />
-          <Route path="/doctor"    element={<DoctorPage />} />
-          <Route path="/doctor/upload" element={<DoctorPage />} />
-          <Route path="/hackathon" element={<HackathonPage lang={lang} />} />
-        </Routes>
+        <Suspense fallback={<PageFallback />}>
+          <Routes location={location}>
+            <Route path="/"          element={<Home lang={lang} />} />
+            <Route path="/protocol"  element={<ProtocolPage lang={lang} />} />
+            <Route path="/patient"   element={<PatientPage />} />
+            <Route path="/doctor"    element={<DoctorPage />} />
+            <Route path="/doctor/upload" element={<DoctorPage />} />
+            <Route path="/hackathon" element={<HackathonPage lang={lang} />} />
+          </Routes>
+        </Suspense>
       </motion.div>
     </AnimatePresence>
+  )
+}
+
+function PageFallback() {
+  return (
+    <div className="flex flex-1 items-center justify-center py-24">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
   )
 }
 

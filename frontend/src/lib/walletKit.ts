@@ -122,6 +122,18 @@ export async function signTx(xdr: string): Promise<string> {
   return signedTxXdr
 }
 
+export async function signMessageWithWallet(message: string): Promise<string> {
+  await ensureInit()
+  const address = await getKitAddress()
+  const { signedMessage } = await StellarWalletsKit.signMessage(message, {
+    address,
+    networkPassphrase: Networks.TESTNET,
+  })
+  if (!signedMessage) throw new Error('Wallet returned an empty signature')
+  if (typeof signedMessage === 'string') return signedMessage
+  return btoa(String.fromCharCode(...new Uint8Array(signedMessage as ArrayBufferLike)))
+}
+
 export async function disconnectKit(): Promise<void> {
   try {
     await StellarWalletsKit.disconnect()
@@ -130,6 +142,12 @@ export async function disconnectKit(): Promise<void> {
   }
   currentAddress = null
   localStorage.removeItem(SELECTED_KEY)
+  try {
+    const { clearKeyCache } = await import('@/lib/keystore')
+    clearKeyCache()
+  } catch {
+    /* keystore not loaded */
+  }
 }
 
 export { Networks as KitNetworks }

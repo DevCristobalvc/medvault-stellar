@@ -6,10 +6,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { generateKey, encryptFile, exportKey, encodePayload } from '@/lib/encryption'
+import { encryptFile, encodePayload } from '@/lib/encryption'
 import { uploadEncryptedPayload } from '@/lib/ipfs'
 import { registerDocument } from '@/lib/stellar'
-import { saveDocumentKey } from '@/lib/keystore'
+import { generateSalt, deriveDocumentKey } from '@/lib/keystore'
 
 type Step = 'idle' | 'encrypting' | 'uploading' | 'registering' | 'done'
 type InputMode = 'text' | 'file'
@@ -25,7 +25,7 @@ const STEP_LABELS: Record<Step, string> = {
 const ACCEPTED_TYPES = '.txt,.pdf,.doc,.docx,.png,.jpg,.jpeg'
 
 interface DocumentUploadProps {
-  onSuccess?: (documentId: string, encryptionKey: string) => void
+  onSuccess?: (documentId: string) => void
 }
 
 export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
@@ -72,11 +72,11 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
 
     try {
       setStep('encrypting')
-      const key = await generateKey()
+      const salt = generateSalt()
+      const key = await deriveDocumentKey(salt)
       const data = await getDataBuffer()
       const { ciphertext, iv } = await encryptFile(data, key)
-      const payload = encodePayload(ciphertext, iv)
-      const keyB64 = await exportKey(key)
+      const payload = encodePayload(ciphertext, iv, salt)
 
       setStep('uploading')
       const cid = await uploadEncryptedPayload(payload, { docType, patientAddress })
@@ -84,10 +84,8 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
       setStep('registering')
       const documentId = await registerDocument(patientAddress, cid, docType)
 
-      saveDocumentKey(documentId, keyB64)
-
       setStep('done')
-      onSuccess?.(documentId, keyB64)
+      onSuccess?.(documentId)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error')
       setStep('idle')

@@ -54,6 +54,24 @@ describe('encryption', () => {
     expect(iv2).toEqual(iv)
   })
 
+  it('encodePayload / decodePayload preserves the salt', async () => {
+    const key = await generateKey()
+    const data = new TextEncoder().encode('with salt').buffer as ArrayBuffer
+    const { ciphertext, iv } = await encryptFile(data, key)
+    const salt = crypto.getRandomValues(new Uint8Array(16))
+    const encoded = encodePayload(ciphertext, iv, salt)
+    const { salt: salt2 } = decodePayload(encoded)
+    expect(salt2).toEqual(salt)
+  })
+
+  it('decodePayload returns an empty salt when none was encoded', async () => {
+    const key = await generateKey()
+    const data = new TextEncoder().encode('no salt').buffer as ArrayBuffer
+    const { ciphertext, iv } = await encryptFile(data, key)
+    const { salt } = decodePayload(encodePayload(ciphertext, iv))
+    expect(salt.length).toBe(0)
+  })
+
   it('encrypts a 1MB file correctly', async () => {
     const key = await generateKey()
     const big = new Uint8Array(1024 * 1024).fill(42).buffer as ArrayBuffer

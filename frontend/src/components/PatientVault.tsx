@@ -10,10 +10,11 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { useDocuments } from '@/hooks/useDocuments'
 import { getAuditLog, grantAccess, revokeAccess, type AccessEvent } from '@/lib/stellar'
-import { getDocumentKey } from '@/lib/keystore'
+import { deriveDocumentKey } from '@/lib/keystore'
+import { downloadEncryptedPayload } from '@/lib/ipfs'
+import { decodePayload } from '@/lib/encryption'
 import { saveActiveToken, getActiveTokens, removeToken, type ActiveToken } from '@/lib/tokenstore'
 import { generateWrappingKey, encryptKeyWithWK, wkToBase64 } from '@/lib/ecies'
-import { importKey } from '@/lib/encryption'
 import { QRGenerator } from './QRGenerator'
 
 const DURATION_OPTIONS = [
@@ -130,10 +131,8 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
   function openGrant(doc: DocItem) {
     setDoctorInput('')
     setSelectedDoc(doc)
-    const tokens = getActiveTokens(doc.id)
-    setActiveTokens(tokens)
-    const encryptionKey = getDocumentKey(doc.id)
-    setGrantState({ docId: doc.id, doctorAddress: '', encryptionKey, tokenId: null, expiresAt: 0, step: 'address', error: null })
+    setActiveTokens(getActiveTokens(doc.id))
+    setGrantState({ docId: doc.id, doctorAddress: '', encryptionKey: null, tokenId: null, expiresAt: 0, step: 'address', error: null })
   }
 
   function showExistingTokenQR(token: ActiveToken) {
@@ -155,20 +154,13 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
   }
 
   async function handleGrantAccess(durationSeconds: number) {
-    if (!grantState) return
-    const keyB64 = getDocumentKey(grantState.docId)
-    if (!keyB64) {
-      setGrantState((s) => s && {
-        ...s,
-        step: 'error',
-        error: 'Encryption key for this document is not on this device. Share access from the device or browser where it was uploaded.',
-      })
-      return
-    }
+    if (!grantState || !selectedDoc) return
     const expiresAt = Math.floor(Date.now() / 1000) + durationSeconds
     setGrantState((s) => s && { ...s, step: 'loading', expiresAt })
     try {
-      const aesKey = await importKey(keyB64)
+      const payload = await downloadEncryptedPayload(selectedDoc.cid)
+      const { salt } = decodePayload(payload)
+      const aesKey = await deriveDocumentKey(salt)
       const wk = generateWrappingKey()
       const encryptedKeyBytes = await encryptKeyWithWK(aesKey, wk)
       const wrappingKeyB64 = wkToBase64(wk)
@@ -299,16 +291,7 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
                 Grant new access
               </p>
 
-              {grantState?.step === 'address' && grantState.encryptionKey === null && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
-                  <p className="text-xs text-amber-700 flex items-start gap-1.5">
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                    The encryption key for this document isn&apos;t on this device. Share access from the device or browser where it was uploaded.
-                  </p>
-                </div>
-              )}
-
-              {grantState?.step === 'address' && grantState.encryptionKey !== null && (
+              {grantState?.step === 'address' && (
                 <div className="flex flex-col gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="doctor-addr" className="flex items-center gap-1.5 text-sm">

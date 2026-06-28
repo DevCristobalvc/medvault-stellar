@@ -62,15 +62,23 @@ export async function importKey(base64: string): Promise<CryptoKey> {
   ])
 }
 
-export function encodePayload(ciphertext: ArrayBuffer, iv: Uint8Array): string {
-  const ivB64 = bytesToBase64(iv)
-  const ctB64 = bytesToBase64(new Uint8Array(ciphertext))
-  return JSON.stringify({ iv: ivB64, ct: ctB64 })
+export function encodePayload(ciphertext: ArrayBuffer, iv: Uint8Array, salt?: Uint8Array): string {
+  const obj: Record<string, string> = {
+    iv: bytesToBase64(iv),
+    ct: bytesToBase64(new Uint8Array(ciphertext)),
+  }
+  if (salt && salt.length) obj.salt = bytesToBase64(salt)
+  return JSON.stringify(obj)
 }
 
-export function decodePayload(payload: string): { ciphertext: ArrayBuffer; iv: Uint8Array } {
-  const { iv: ivB64, ct: ctB64 } = JSON.parse(payload)
+export function decodePayload(payload: string): {
+  ciphertext: ArrayBuffer
+  iv: Uint8Array
+  salt: Uint8Array
+} {
+  const { iv: ivB64, ct: ctB64, salt: saltB64 } = JSON.parse(payload)
   const iv = base64ToBytes(ivB64)
   const ciphertext = base64ToBytes(ctB64).buffer
-  return { ciphertext, iv }
+  const salt = saltB64 ? base64ToBytes(saltB64) : new Uint8Array(0)
+  return { ciphertext, iv, salt }
 }

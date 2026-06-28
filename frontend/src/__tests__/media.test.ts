@@ -45,6 +45,7 @@ describe('extensionForMime', () => {
     expect(extensionForMime('image/png')).toBe('png')
     expect(extensionForMime('image/svg+xml')).toBe('svg')
     expect(extensionForMime('application/pdf')).toBe('pdf')
+    expect(extensionForMime('text/plain')).toBe('txt')
   })
   it('falls back to bin for unknown mimes', () => {
     expect(extensionForMime('application/octet-stream')).toBe('bin')

@@ -57,6 +57,7 @@ export function extensionForMime(mime: string): string {
     case 'image/webp': return 'webp'
     case 'image/svg+xml': return 'svg'
     case 'application/pdf': return 'pdf'
+    case 'text/plain': return 'txt'
     default: return 'bin'
   }
 }

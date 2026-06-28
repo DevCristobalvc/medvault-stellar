@@ -19,11 +19,22 @@ async function flush() {
 afterEach(() => cleanup())
 
 describe('RecordContent', () => {
-  it('renders plain clinical text without a load button', () => {
+  it('renders plain clinical text with a persistent download link and no load button', () => {
     const data = new TextEncoder().encode('Patient is stable.').buffer as ArrayBuffer
     render(<RecordContent data={data} docType="clinical_history" />)
     expect(screen.getByText('Patient is stable.')).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    const link = screen.getByRole('link', { name: /Download/i })
+    expect(link.getAttribute('href')).toMatch(/^blob:/)
+    expect(link.getAttribute('download')).toBe('record.txt')
+  })
+
+  it('offers a download link before the image is loaded', () => {
+    render(<RecordContent data={JPEG} docType="scan" />)
+    expect(screen.getByRole('button', { name: /Load image/i })).toBeInTheDocument()
+    const link = screen.getByRole('link', { name: /Download/i })
+    expect(link.getAttribute('href')).toMatch(/^blob:/)
+    expect(link.getAttribute('download')).toBe('record.jpg')
   })
 
   it('shows a Load button for images and renders the image after loading', async () => {

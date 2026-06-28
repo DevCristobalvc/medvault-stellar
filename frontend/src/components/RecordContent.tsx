@@ -14,13 +14,19 @@ interface RecordContentProps {
 
 export function RecordContent({ data, docType }: RecordContentProps) {
   const media = useMemo(() => detectMedia(data), [data])
+  const downloadUrl = useMemo(
+    () => URL.createObjectURL(new Blob([data], { type: media.mime })),
+    [data, media.mime]
+  )
+  useEffect(() => () => URL.revokeObjectURL(downloadUrl), [downloadUrl])
+
   const [phase, setPhase] = useState<Phase>('idle')
   const [progress, setProgress] = useState(0)
-  const [url, setUrl] = useState<string | null>(null)
-  const urlRef = useRef<string | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const previewRef = useRef<string | null>(null)
 
   useEffect(() => {
-    return () => { if (urlRef.current) URL.revokeObjectURL(urlRef.current) }
+    return () => { if (previewRef.current) URL.revokeObjectURL(previewRef.current) }
   }, [])
 
   useEffect(() => {
@@ -29,13 +35,29 @@ export function RecordContent({ data, docType }: RecordContentProps) {
     return () => clearTimeout(timer)
   }, [phase])
 
-  if (media.kind === 'text') {
-    return <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{media.text}</p>
-  }
-
   const sizeKb = (data.byteLength / 1024).toFixed(0)
   const filename = `record.${extensionForMime(media.mime)}`
-  const loadLabel = media.kind === 'image' ? 'Load image' : media.kind === 'pdf' ? 'Load PDF' : 'Load file'
+
+  function downloadLink(label: string) {
+    return (
+      <a
+        href={downloadUrl}
+        download={filename}
+        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline self-start"
+      >
+        <Download className="h-3.5 w-3.5" /> {label}
+      </a>
+    )
+  }
+
+  if (media.kind === 'text') {
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{media.text}</p>
+        {downloadLink('Download')}
+      </div>
+    )
+  }
 
   async function handleLoad() {
     setPhase('loading')
@@ -44,27 +66,16 @@ export function RecordContent({ data, docType }: RecordContentProps) {
       const objUrl = await assembleBlobUrl(data, media.mime, (loaded, total) => {
         setProgress(total === 0 ? 100 : Math.round((loaded / total) * 100))
       })
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current)
-      urlRef.current = objUrl
-      setUrl(objUrl)
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current)
+      previewRef.current = objUrl
+      setPreviewUrl(objUrl)
       setPhase(media.kind === 'image' ? 'rendering' : 'ready')
     } catch {
       setPhase('failed')
     }
   }
 
-  function downloadLink(label: string) {
-    if (!url) return null
-    return (
-      <a
-        href={url}
-        download={filename}
-        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline self-start"
-      >
-        <Download className="h-3.5 w-3.5" /> {label}
-      </a>
-    )
-  }
+  const loadLabel = media.kind === 'image' ? 'Load image' : media.kind === 'pdf' ? 'Load PDF' : 'Load file'
 
   if (phase === 'idle') {
     const Icon = media.kind === 'image' ? ImageIcon : media.kind === 'pdf' ? FileText : FileQuestion
@@ -76,7 +87,10 @@ export function RecordContent({ data, docType }: RecordContentProps) {
         <p className="text-xs text-muted-foreground">
           {media.kind === 'image' ? 'Image' : media.kind === 'pdf' ? 'PDF document' : 'File'} · {sizeKb} KB
         </p>
-        <Button size="sm" onClick={handleLoad}>{loadLabel}</Button>
+        <div className="flex items-center gap-4">
+          <Button size="sm" onClick={handleLoad}>{loadLabel}</Button>
+          {downloadLink('Download')}
+        </div>
       </div>
     )
   }
@@ -98,6 +112,7 @@ export function RecordContent({ data, docType }: RecordContentProps) {
             aria-valuemax={100}
           />
         </div>
+        {downloadLink('Download')}
       </div>
     )
   }
@@ -116,7 +131,7 @@ export function RecordContent({ data, docType }: RecordContentProps) {
     )
   }
 
-  if (media.kind === 'image' && url) {
+  if (media.kind === 'image' && previewUrl) {
     return (
       <div className="flex flex-col gap-2">
         {phase === 'rendering' && (
@@ -125,21 +140,21 @@ export function RecordContent({ data, docType }: RecordContentProps) {
           </div>
         )}
         <img
-          src={url}
+          src={previewUrl}
           alt={docType}
           onLoad={() => setPhase('ready')}
           onError={() => setPhase('failed')}
           className="max-w-full h-auto rounded-md border border-border"
         />
-        {phase === 'ready' && downloadLink('Download image')}
+        {downloadLink('Download image')}
       </div>
     )
   }
 
-  if (media.kind === 'pdf' && url) {
+  if (media.kind === 'pdf' && previewUrl) {
     return (
       <div className="flex flex-col gap-2">
-        <iframe src={url} title={docType} className="w-full h-[60dvh] rounded-md border border-border" />
+        <iframe src={previewUrl} title={docType} className="w-full h-[60dvh] rounded-md border border-border" />
         {downloadLink('Download PDF')}
       </div>
     )

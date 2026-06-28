@@ -2,6 +2,23 @@ const ALGORITHM = 'AES-GCM'
 const KEY_LENGTH = 256
 const IV_LENGTH = 12
 
+const CHUNK_SIZE = 0x8000
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK_SIZE))
+  }
+  return btoa(binary)
+}
+
+function base64ToBytes(base64: string): Uint8Array<ArrayBuffer> {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+
 export async function generateKey(): Promise<CryptoKey> {
   return crypto.subtle.generateKey({ name: ALGORITHM, length: KEY_LENGTH }, true, [
     'encrypt',
@@ -34,11 +51,11 @@ export async function decryptFile(
 
 export async function exportKey(key: CryptoKey): Promise<string> {
   const raw = await crypto.subtle.exportKey('raw', key)
-  return btoa(String.fromCharCode(...new Uint8Array(raw)))
+  return bytesToBase64(new Uint8Array(raw))
 }
 
 export async function importKey(base64: string): Promise<CryptoKey> {
-  const raw = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+  const raw = base64ToBytes(base64)
   return crypto.subtle.importKey('raw', raw, { name: ALGORITHM, length: KEY_LENGTH }, true, [
     'encrypt',
     'decrypt',
@@ -46,14 +63,14 @@ export async function importKey(base64: string): Promise<CryptoKey> {
 }
 
 export function encodePayload(ciphertext: ArrayBuffer, iv: Uint8Array): string {
-  const ivB64 = btoa(String.fromCharCode(...iv))
-  const ctB64 = btoa(String.fromCharCode(...new Uint8Array(ciphertext)))
+  const ivB64 = bytesToBase64(iv)
+  const ctB64 = bytesToBase64(new Uint8Array(ciphertext))
   return JSON.stringify({ iv: ivB64, ct: ctB64 })
 }
 
 export function decodePayload(payload: string): { ciphertext: ArrayBuffer; iv: Uint8Array } {
   const { iv: ivB64, ct: ctB64 } = JSON.parse(payload)
-  const iv = Uint8Array.from(atob(ivB64), (c) => c.charCodeAt(0))
-  const ciphertext = Uint8Array.from(atob(ctB64), (c) => c.charCodeAt(0)).buffer
+  const iv = base64ToBytes(ivB64)
+  const ciphertext = base64ToBytes(ctB64).buffer
   return { ciphertext, iv }
 }

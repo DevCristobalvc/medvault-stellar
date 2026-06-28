@@ -1,18 +1,32 @@
-import { StellarWalletsKit, Networks, type ModuleInterface } from '@creit.tech/stellar-wallets-kit'
-import { FreighterModule } from '@creit.tech/stellar-wallets-kit/modules/freighter'
-import { xBullModule } from '@creit.tech/stellar-wallets-kit/modules/xbull'
-import { AlbedoModule } from '@creit.tech/stellar-wallets-kit/modules/albedo'
-import { RabetModule } from '@creit.tech/stellar-wallets-kit/modules/rabet'
-import { HanaModule } from '@creit.tech/stellar-wallets-kit/modules/hana'
-import { LobstrModule } from '@creit.tech/stellar-wallets-kit/modules/lobstr'
+import type { ModuleInterface } from '@creit.tech/stellar-wallets-kit'
+
+type KitClass = typeof import('@creit.tech/stellar-wallets-kit').StellarWalletsKit
 
 const SELECTED_KEY = 'medvault_wallet_id'
 const WC_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID?.trim()
 
 let initPromise: Promise<void> | null = null
+let Kit: KitClass | null = null
+let testnetPassphrase = ''
 let currentAddress: string | null = null
 
 async function buildModules(): Promise<ModuleInterface[]> {
+  const [
+    { FreighterModule },
+    { xBullModule },
+    { AlbedoModule },
+    { RabetModule },
+    { HanaModule },
+    { LobstrModule },
+  ] = await Promise.all([
+    import('@creit.tech/stellar-wallets-kit/modules/freighter'),
+    import('@creit.tech/stellar-wallets-kit/modules/xbull'),
+    import('@creit.tech/stellar-wallets-kit/modules/albedo'),
+    import('@creit.tech/stellar-wallets-kit/modules/rabet'),
+    import('@creit.tech/stellar-wallets-kit/modules/hana'),
+    import('@creit.tech/stellar-wallets-kit/modules/lobstr'),
+  ])
+
   const modules: ModuleInterface[] = [
     new FreighterModule(),
     new xBullModule(),
@@ -56,41 +70,51 @@ async function prewarmFreighter(): Promise<void> {
 
 function ensureInit(): Promise<void> {
   if (!initPromise) {
-    initPromise = buildModules().then((modules) => {
-      StellarWalletsKit.init({
+    initPromise = (async () => {
+      const mod = await import('@creit.tech/stellar-wallets-kit')
+      Kit = mod.StellarWalletsKit
+      testnetPassphrase = mod.Networks.TESTNET
+      const modules = await buildModules()
+      Kit.init({
         modules,
-        network: Networks.TESTNET,
+        network: mod.Networks.TESTNET,
         selectedWalletId: localStorage.getItem(SELECTED_KEY) || undefined,
       })
       void prewarmFreighter()
-    })
+    })()
   }
   return initPromise
 }
 
+async function requireKit(): Promise<KitClass> {
+  await ensureInit()
+  if (!Kit) throw new Error('Wallet kit failed to initialize')
+  return Kit
+}
+
 function persistSelected() {
   try {
-    localStorage.setItem(SELECTED_KEY, StellarWalletsKit.selectedModule.productId)
+    if (Kit) localStorage.setItem(SELECTED_KEY, Kit.selectedModule.productId)
   } catch {
     /* no module selected */
   }
 }
 
 export async function openWalletModal(): Promise<string> {
-  await ensureInit()
-  const { address } = await StellarWalletsKit.authModal()
+  const kit = await requireKit()
+  const { address } = await kit.authModal()
   currentAddress = address
   persistSelected()
   return address
 }
 
 export async function restoreAddress(): Promise<string | null> {
-  await ensureInit()
+  const kit = await requireKit()
   const id = localStorage.getItem(SELECTED_KEY)
   if (!id) return null
   try {
-    StellarWalletsKit.setWallet(id)
-    const { address } = await StellarWalletsKit.selectedModule.getAddress({ skipRequestAccess: true })
+    kit.setWallet(id)
+    const { address } = await kit.selectedModule.getAddress({ skipRequestAccess: true })
     currentAddress = address || null
     return currentAddress
   } catch {
@@ -99,35 +123,35 @@ export async function restoreAddress(): Promise<string | null> {
 }
 
 export async function getKitAddress(): Promise<string> {
-  await ensureInit()
+  const kit = await requireKit()
   if (currentAddress) return currentAddress
-  const { address } = await StellarWalletsKit.getAddress()
+  const { address } = await kit.getAddress()
   currentAddress = address
   return address
 }
 
 export async function getKitNetworkPassphrase(): Promise<string> {
-  await ensureInit()
-  const { networkPassphrase } = await StellarWalletsKit.getNetwork()
+  const kit = await requireKit()
+  const { networkPassphrase } = await kit.getNetwork()
   return networkPassphrase
 }
 
 export async function signTx(xdr: string): Promise<string> {
-  await ensureInit()
+  const kit = await requireKit()
   const address = await getKitAddress()
-  const { signedTxXdr } = await StellarWalletsKit.signTransaction(xdr, {
+  const { signedTxXdr } = await kit.signTransaction(xdr, {
     address,
-    networkPassphrase: Networks.TESTNET,
+    networkPassphrase: testnetPassphrase,
   })
   return signedTxXdr
 }
 
 export async function signMessageWithWallet(message: string): Promise<string> {
-  await ensureInit()
+  const kit = await requireKit()
   const address = await getKitAddress()
-  const { signedMessage } = await StellarWalletsKit.signMessage(message, {
+  const { signedMessage } = await kit.signMessage(message, {
     address,
-    networkPassphrase: Networks.TESTNET,
+    networkPassphrase: testnetPassphrase,
   })
   if (!signedMessage) throw new Error('Wallet returned an empty signature')
   if (typeof signedMessage === 'string') return signedMessage
@@ -135,10 +159,12 @@ export async function signMessageWithWallet(message: string): Promise<string> {
 }
 
 export async function disconnectKit(): Promise<void> {
-  try {
-    await StellarWalletsKit.disconnect()
-  } catch {
-    /* already disconnected */
+  if (Kit) {
+    try {
+      await Kit.disconnect()
+    } catch {
+      /* already disconnected */
+    }
   }
   currentAddress = null
   localStorage.removeItem(SELECTED_KEY)
@@ -149,5 +175,3 @@ export async function disconnectKit(): Promise<void> {
     /* keystore not loaded */
   }
 }
-
-export { Networks as KitNetworks }

@@ -340,7 +340,9 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
                 <div className="flex flex-col gap-2.5">
                   <div className="rounded-lg bg-muted/40 border border-border px-3 py-2">
                     <p className="text-xs text-muted-foreground">Doctor wallet</p>
-                    <p className="font-mono text-xs truncate">{grantState.doctorAddress}</p>
+                    <p className="font-mono text-xs truncate" title={grantState.doctorAddress}>
+                      {grantState.doctorAddress.slice(0, 8)}...{grantState.doctorAddress.slice(-6)}
+                    </p>
                   </div>
                   <Label className="text-muted-foreground text-xs uppercase tracking-wide">
                     Access duration

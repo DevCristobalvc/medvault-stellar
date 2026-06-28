@@ -39,7 +39,6 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const busy = step !== 'idle' && step !== 'done'
-  const canSubmit = !busy && patientAddress.trim() && (mode === 'text' ? content.trim() : !!file)
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null
@@ -59,8 +58,17 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!canSubmit) return
+    if (busy) return
     setError(null)
+
+    if (!patientAddress.trim()) {
+      setError('Enter the patient Stellar address (starts with G).')
+      return
+    }
+    if (mode === 'text' ? !content.trim() : !file) {
+      setError(mode === 'text' ? 'Write the clinical content.' : 'Select a file to upload.')
+      return
+    }
 
     try {
       setStep('encrypting')
@@ -214,7 +222,7 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 
-          <Button type="submit" disabled={!canSubmit}>
+          <Button type="submit" disabled={busy}>
             {busy ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

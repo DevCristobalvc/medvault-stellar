@@ -10,13 +10,14 @@ import { downloadEncryptedPayload } from '@/lib/ipfs'
 import { decryptFile, decodePayload } from '@/lib/encryption'
 import { decryptKeyWithWK, base64ToWk } from '@/lib/ecies'
 import { saveDoctorRecord } from '@/lib/doctorstore'
+import { RecordContent } from './RecordContent'
 
 type AccessStatus =
   | { phase: 'verifying' }
   | { phase: 'invalid'; reason: string }
   | { phase: 'needs_key'; tokenInfo: { documentId: string; patient: string } }
   | { phase: 'decrypting' }
-  | { phase: 'ready'; content: string; doc: Document }
+  | { phase: 'ready'; data: ArrayBuffer; doc: Document }
 
 interface DoctorAccessProps {
   tokenId: string
@@ -83,7 +84,6 @@ export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey }: Doctor
       const payload = await downloadEncryptedPayload(doc.cid)
       const { ciphertext, iv } = decodePayload(payload)
       const plaintext = await decryptFile(ciphertext, iv, aesKey)
-      const content = new TextDecoder().decode(plaintext)
 
       await logAccess(tokenId, tokenInfo.patient)
 
@@ -98,7 +98,7 @@ export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey }: Doctor
         encryptionKey: wkB64,
       })
 
-      setStatus({ phase: 'ready', content, doc })
+      setStatus({ phase: 'ready', data: plaintext, doc })
     } catch (e) {
       setStatus({ phase: 'invalid', reason: e instanceof Error ? e.message : 'Decryption failed.' })
     }
@@ -195,7 +195,7 @@ export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey }: Doctor
         <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
           Clinical Record
         </p>
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">{status.content}</p>
+        <RecordContent data={status.data} docType={status.doc.docType} />
       </div>
 
       <p className="text-[10px] text-muted-foreground text-center py-0.5">

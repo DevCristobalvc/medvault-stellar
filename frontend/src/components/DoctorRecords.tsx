@@ -10,6 +10,7 @@ import { getDoctorRecords, saveDoctorRecord, type DoctorRecord } from '@/lib/doc
 import { downloadEncryptedPayload } from '@/lib/ipfs'
 import { decryptFile, decodePayload } from '@/lib/encryption'
 import { decryptKeyWithWK, base64ToWk } from '@/lib/ecies'
+import { RecordContent } from './RecordContent'
 
 interface DoctorRecordsProps {
   doctorPublicKey: string
@@ -66,7 +67,8 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
   const [records, setRecords] = useState<(DoctorRecord & { isExpired: boolean })[]>([])
   const [loading, setLoading] = useState(false)
   const [activeRecord, setActiveRecord] = useState<DoctorRecord | null>(null)
-  const [content, setContent] = useState<string | null>(null)
+  const [data, setData] = useState<ArrayBuffer | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [decrypting, setDecrypting] = useState(false)
 
   const refresh = useCallback(async () => {
@@ -113,7 +115,8 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
   async function openRecord(record: DoctorRecord) {
     if (!record.encryptionKey || !record.cid) return
     setActiveRecord(record)
-    setContent(null)
+    setData(null)
+    setError(null)
     setDecrypting(true)
     try {
       const encryptedKeyBytes = await getEncryptedKey(record.tokenId)
@@ -123,9 +126,9 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
       const payload = await downloadEncryptedPayload(record.cid)
       const { ciphertext, iv } = decodePayload(payload)
       const plaintext = await decryptFile(ciphertext, iv, aesKey)
-      setContent(new TextDecoder().decode(plaintext))
+      setData(plaintext)
     } catch (e) {
-      setContent(`Error: ${e instanceof Error ? e.message : 'Decryption failed'}`)
+      setError(e instanceof Error ? e.message : 'Decryption failed')
     } finally {
       setDecrypting(false)
     }
@@ -168,7 +171,7 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
         ))}
       </div>
 
-      <Dialog open={!!activeRecord} onOpenChange={(open) => { if (!open) { setActiveRecord(null); setContent(null) } }}>
+      <Dialog open={!!activeRecord} onOpenChange={(open) => { if (!open) { setActiveRecord(null); setData(null); setError(null) } }}>
         <DialogContent className="w-[calc(100vw-32px)] max-w-md max-h-[85dvh] overflow-y-auto p-0 gap-0">
           <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
             <DialogTitle className="text-base capitalize flex items-center gap-2">
@@ -183,7 +186,9 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
                 <Skeleton className="h-3 w-4/5" />
                 <Skeleton className="h-3 w-3/5" />
               </div>
-            ) : content ? (
+            ) : error ? (
+              <p className="text-sm text-destructive py-2">{error}</p>
+            ) : data ? (
               <>
                 <div className="flex items-center gap-2 mb-3">
                   <p className="text-xs text-muted-foreground flex-1">
@@ -197,7 +202,7 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
                   <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
                     Clinical Record
                   </p>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
+                  <RecordContent data={data} docType={activeRecord?.docType ?? 'document'} />
                 </div>
                 <p className="text-[10px] text-muted-foreground text-center mt-3">
                   Clinical content stays in memory — never written to this device.

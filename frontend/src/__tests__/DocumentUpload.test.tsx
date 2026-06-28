@@ -60,4 +60,36 @@ describe('DocumentUpload', () => {
     expect(uploadEncryptedPayload).toHaveBeenCalledTimes(1)
     expect(registerDocument).toHaveBeenCalledWith(PATIENT, 'cid123', 'clinical_history')
   })
+
+  it('derives docType from the file name when uploading a file', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<DocumentUpload />)
+    await user.type(screen.getByPlaceholderText('G...'), PATIENT)
+    await user.click(screen.getByRole('button', { name: /Upload file/i }))
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+    await user.upload(fileInput, new File(['x-ray'], 'chest-xray.png', { type: 'image/png' }))
+    await user.click(screen.getByRole('button', { name: /Encrypt & Upload/i }))
+
+    await waitFor(() => expect(screen.getByText(/Document registered on Stellar/i)).toBeInTheDocument())
+    expect(registerDocument).toHaveBeenCalledWith(PATIENT, 'cid123', 'chest-xray')
+  })
+
+  it('keeps a manually entered docType when a file is selected', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<DocumentUpload />)
+    await user.type(screen.getByPlaceholderText('G...'), PATIENT)
+
+    const docTypeInput = screen.getByPlaceholderText('clinical_history')
+    await user.clear(docTypeInput)
+    await user.type(docTypeInput, 'radiology')
+
+    await user.click(screen.getByRole('button', { name: /Upload file/i }))
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+    await user.upload(fileInput, new File(['scan'], 'scan.png', { type: 'image/png' }))
+    await user.click(screen.getByRole('button', { name: /Encrypt & Upload/i }))
+
+    await waitFor(() => expect(screen.getByText(/Document registered on Stellar/i)).toBeInTheDocument())
+    expect(registerDocument).toHaveBeenCalledWith(PATIENT, 'cid123', 'radiology')
+  })
 })

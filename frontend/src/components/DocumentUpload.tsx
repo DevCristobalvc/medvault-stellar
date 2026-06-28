@@ -34,6 +34,7 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
   const [file, setFile] = useState<File | null>(null)
   const [patientAddress, setPatientAddress] = useState('')
   const [docType, setDocType] = useState('clinical_history')
+  const [docTypeTouched, setDocTypeTouched] = useState(false)
   const [step, setStep] = useState<Step>('idle')
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -43,7 +44,10 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null
     setFile(f)
-    if (f && !docType) setDocType(f.name.split('.').pop() ?? 'document')
+    if (f && !docTypeTouched) {
+      const base = f.name.replace(/\.[^/.]+$/, '').trim()
+      setDocType(base || f.name)
+    }
   }
 
   function clearFile() {
@@ -137,7 +141,7 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
             <Input
               id="doctype"
               value={docType}
-              onChange={(e) => setDocType(e.target.value)}
+              onChange={(e) => { setDocType(e.target.value); setDocTypeTouched(true) }}
               placeholder="clinical_history"
               disabled={busy}
             />
@@ -150,7 +154,10 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
               <button
                 key={m}
                 type="button"
-                onClick={() => { setMode(m); setContent(''); clearFile() }}
+                onClick={() => {
+                  setMode(m); setContent(''); clearFile()
+                  if (!docTypeTouched) setDocType('clinical_history')
+                }}
                 disabled={busy}
                 className={`flex-1 rounded-md py-1.5 text-xs font-medium transition-colors ${
                   mode === m

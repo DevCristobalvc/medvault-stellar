@@ -80,6 +80,20 @@ describe('encryption', () => {
     expect(new Uint8Array(decrypted)).toEqual(new Uint8Array(big))
   }, 20000)
 
+  it('base64 payload round-trip preserves every byte of a 256KB random buffer', async () => {
+    const key = await generateKey()
+    const random = new Uint8Array(256 * 1024)
+    for (let i = 0; i < random.length; i += 65536) {
+      crypto.getRandomValues(random.subarray(i, Math.min(i + 65536, random.length)))
+    }
+    const { ciphertext, iv } = await encryptFile(random.buffer as ArrayBuffer, key)
+    const { ciphertext: ct2, iv: iv2 } = decodePayload(encodePayload(ciphertext, iv))
+    const decrypted = await decryptFile(ct2, iv2, key)
+    const out = new Uint8Array(decrypted)
+    expect(out.length).toBe(random.length)
+    expect(out).toEqual(random)
+  }, 20000)
+
   it('exportKey produces valid base64', async () => {
     const key = await generateKey()
     const b64 = await exportKey(key)

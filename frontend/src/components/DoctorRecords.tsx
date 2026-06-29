@@ -1,12 +1,13 @@
 import { useState, useCallback } from 'react'
-import { FileText, RefreshCw, Lock, Unlock } from 'lucide-react'
+import { FileText, RefreshCw, Lock, Unlock, Key } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { getDoctorTokens, getTokenInfo, getDocument, getEncryptedKey } from '@/lib/stellar'
-import { getDoctorRecords, saveDoctorRecord, type DoctorRecord } from '@/lib/doctorstore'
+import { getDoctorRecords, saveDoctorRecord, updateRecordKey, type DoctorRecord } from '@/lib/doctorstore'
 import { downloadEncryptedPayload } from '@/lib/ipfs'
 import { decryptFile, decodePayload } from '@/lib/encryption'
 import { decryptKeyWithWK, base64ToWk } from '@/lib/ecies'
@@ -19,46 +20,80 @@ interface DoctorRecordsProps {
 function RecordCard({
   record,
   onOpen,
+  onProvideKey,
 }: {
   record: DoctorRecord & { isExpired: boolean }
   onOpen: (record: DoctorRecord) => void
+  onProvideKey: (record: DoctorRecord, key: string) => void
 }) {
   const date = new Date(record.accessedAt * 1000).toLocaleDateString()
   const hasKey = !!record.encryptionKey
+  const [pasting, setPasting] = useState(false)
+  const [keyInput, setKeyInput] = useState('')
 
   return (
-    <div className="flex items-center gap-3 py-3 px-3.5 rounded-lg border border-border bg-card">
-      <div className="rounded-md border border-border bg-muted/30 p-1.5 shrink-0">
-        <FileText className="h-4 w-4 text-muted-foreground" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium truncate capitalize">
-          {record.docType.replace(/_/g, ' ')}
-        </p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {record.patientAddress.slice(0, 6)}...{record.patientAddress.slice(-4)} · {date}
-        </p>
-      </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        {record.isExpired && (
-          <Badge variant="outline" className="text-[10px] text-muted-foreground px-1.5">
-            Expired
-          </Badge>
-        )}
-        <Button
-          size="sm"
-          variant={hasKey ? 'default' : 'outline'}
-          className="h-7 px-2 gap-1 text-xs"
-          onClick={() => onOpen(record)}
-          disabled={!hasKey}
-        >
-          {hasKey ? (
-            <><Unlock className="h-3 w-3" />Read</>
-          ) : (
-            <><Lock className="h-3 w-3" />No key</>
+    <div className="flex flex-col gap-2 py-3 px-3.5 rounded-lg border border-border bg-card">
+      <div className="flex items-center gap-3">
+        <div className="rounded-md border border-border bg-muted/30 p-1.5 shrink-0">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium truncate capitalize">
+            {record.docType.replace(/_/g, ' ')}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {record.patientAddress.slice(0, 6)}...{record.patientAddress.slice(-4)} · {date}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {record.isExpired && (
+            <Badge variant="outline" className="text-[10px] text-muted-foreground px-1.5">
+              Expired
+            </Badge>
           )}
-        </Button>
+          {hasKey ? (
+            <Button
+              size="sm"
+              variant="default"
+              className="h-7 px-2 gap-1 text-xs"
+              onClick={() => onOpen(record)}
+            >
+              <Unlock className="h-3 w-3" />Read
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 gap-1 text-xs"
+              onClick={() => setPasting((p) => !p)}
+            >
+              <Lock className="h-3 w-3" />Add key
+            </Button>
+          )}
+        </div>
       </div>
+
+      {!hasKey && pasting && (
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Key className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={keyInput}
+              onChange={(e) => setKeyInput(e.target.value)}
+              placeholder="Paste the key shared by the patient"
+              className="font-mono text-xs h-8 pl-7"
+            />
+          </div>
+          <Button
+            size="sm"
+            className="h-8 px-3 text-xs"
+            disabled={!keyInput.trim()}
+            onClick={() => onProvideKey(record, keyInput.trim())}
+          >
+            Unlock
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -111,6 +146,15 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
       setLoading(false)
     }
   }, [doctorPublicKey])
+
+  function provideKey(record: DoctorRecord, key: string) {
+    updateRecordKey(record.tokenId, key)
+    const updated = { ...record, encryptionKey: key }
+    setRecords((prev) =>
+      prev.map((r) => (r.tokenId === record.tokenId ? { ...r, encryptionKey: key } : r))
+    )
+    openRecord(updated)
+  }
 
   async function openRecord(record: DoctorRecord) {
     if (!record.encryptionKey || !record.cid) return
@@ -167,7 +211,7 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
 
       <div className="flex flex-col gap-2">
         {records.map((r) => (
-          <RecordCard key={r.tokenId} record={r} onOpen={openRecord} />
+          <RecordCard key={r.tokenId} record={r} onOpen={openRecord} onProvideKey={provideKey} />
         ))}
       </div>
 

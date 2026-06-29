@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
-import { Download, Clock, Copy, Check, ExternalLink } from 'lucide-react'
+import { Download, Clock, Copy, Check, ExternalLink, Key } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -36,6 +36,7 @@ export function QRGenerator({ tokenId, expiresAt, encryptionKey, baseUrl }: QRGe
   const remaining = useCountdown(expiresAt)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [copied, setCopied] = useState(false)
+  const [keyCopied, setKeyCopied] = useState(false)
   const expired = remaining <= 0
 
   const base = `${baseUrl ?? window.location.origin}/doctor?token=${tokenId}`
@@ -56,6 +57,13 @@ export function QRGenerator({ tokenId, expiresAt, encryptionKey, baseUrl }: QRGe
     await navigator.clipboard.writeText(url)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function copyKey() {
+    if (!encryptionKey) return
+    await navigator.clipboard.writeText(encryptionKey)
+    setKeyCopied(true)
+    setTimeout(() => setKeyCopied(false), 2000)
   }
 
 
@@ -104,6 +112,12 @@ export function QRGenerator({ tokenId, expiresAt, encryptionKey, baseUrl }: QRGe
                 Save QR
               </Button>
             </div>
+            {encryptionKey && (
+              <Button variant="ghost" size="sm" className="w-full gap-1.5" onClick={copyKey}>
+                {keyCopied ? <Check className="h-3.5 w-3.5" /> : <Key className="h-3.5 w-3.5" />}
+                {keyCopied ? 'Key copied!' : 'Copy key only'}
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

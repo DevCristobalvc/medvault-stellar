@@ -23,6 +23,8 @@ const BOTTOM_NAV = [
   { to: '/doctor',    icon: Stethoscope,  key: 'doctor',    exact: false },
 ]
 
+const APP_VERSION = 'v0.4.2'
+
 const HEADER_NAV = [
   { to: '/',          key: 'home',       exact: true },
   { to: '/hackathon', key: 'hackathon',  exact: false },
@@ -40,6 +42,9 @@ function Header({ lang, setLang }: { lang: ReturnType<typeof useLanguage>['lang'
             <ShieldCheck className="h-4 w-4 text-primary-foreground" />
           </div>
           <span className="font-semibold text-sm tracking-tight">MedVault</span>
+          <span className="text-[10px] font-mono text-muted-foreground border border-border rounded px-1 py-0.5 leading-none">
+            {APP_VERSION}
+          </span>
         </NavLink>
 
         <nav className="hidden md:flex items-center gap-0.5">

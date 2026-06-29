@@ -1,5 +1,6 @@
 import { Download, ExternalLink } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 const DECK_URL = '/deck.pdf'
 
@@ -9,18 +10,23 @@ export function DeckPage() {
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-base font-semibold tracking-tight">Pitch Deck</h1>
         <div className="flex items-center gap-2">
-          <Button asChild size="sm" variant="outline" className="gap-1.5">
-            <a href={DECK_URL} target="_blank" rel="noreferrer">
-              <ExternalLink className="h-3.5 w-3.5" />
-              Open
-            </a>
-          </Button>
-          <Button asChild size="sm" className="gap-1.5">
-            <a href={DECK_URL} download="medvault-deck.pdf">
-              <Download className="h-3.5 w-3.5" />
-              Download
-            </a>
-          </Button>
+          <a
+            href={DECK_URL}
+            target="_blank"
+            rel="noreferrer"
+            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5')}
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Open
+          </a>
+          <a
+            href={DECK_URL}
+            download="medvault-deck.pdf"
+            className={cn(buttonVariants({ size: 'sm' }), 'gap-1.5')}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Download
+          </a>
         </div>
       </div>
 
@@ -33,11 +39,14 @@ export function DeckPage() {
           <p className="text-sm text-muted-foreground">
             Your browser can't display the PDF inline.
           </p>
-          <Button asChild size="sm">
-            <a href={DECK_URL} target="_blank" rel="noreferrer">
-              Open the deck
-            </a>
-          </Button>
+          <a
+            href={DECK_URL}
+            target="_blank"
+            rel="noreferrer"
+            className={cn(buttonVariants({ size: 'sm' }))}
+          >
+            Open the deck
+          </a>
         </div>
       </object>
     </div>

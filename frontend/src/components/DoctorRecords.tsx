@@ -250,7 +250,7 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
                   <RecordContent data={data} docType={activeRecord?.docType ?? 'document'} />
                 </div>
                 <p className="text-[10px] text-muted-foreground text-center mt-3">
-                  Clinical content stays in memory — never written to this device.
+                  Clinical content stays in memory | never written to this device.
                 </p>
               </>
             ) : null}

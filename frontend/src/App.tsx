@@ -25,7 +25,7 @@ const BOTTOM_NAV = [
   { to: '/doctor',    icon: Stethoscope,  key: 'doctor',    exact: false },
 ]
 
-const APP_VERSION = 'v0.4.4'
+const APP_VERSION = 'v0.4.5'
 
 const HEADER_NAV = [
   { to: '/',          key: 'home',       exact: true },

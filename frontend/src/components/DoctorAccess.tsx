@@ -199,7 +199,7 @@ export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey }: Doctor
       </div>
 
       <p className="text-[10px] text-muted-foreground text-center py-0.5">
-        Clinical content stays in memory — never written to this device.
+        Clinical content stays in memory | never written to this device.
       </p>
     </div>
   )

@@ -27,8 +27,8 @@ const DISCOVERY_VIDEO_URL = ''
 
 // Add news articles / studies that back the statistics. Empty = hidden.
 const SOURCES: { label: string; url: string }[] = [
-  { label: 'Infosecurity Magazine — Keralty/Sanitas ransomware', url: 'https://www.infosecurity-magazine.com/news/ransomware-target-colombias-health/' },
-  { label: 'HIPAA Journal — Change Healthcare (190M)', url: 'https://www.hipaajournal.com/biggest-healthcare-data-breaches-2024/' },
+  { label: 'Infosecurity Magazine | Keralty/Sanitas ransomware', url: 'https://www.infosecurity-magazine.com/news/ransomware-target-colombias-health/' },
+  { label: 'HIPAA Journal | Change Healthcare (190M)', url: 'https://www.hipaajournal.com/biggest-healthcare-data-breaches-2024/' },
 ]
 
 const ease = [0.22, 1, 0.36, 1] as [number, number, number, number]
@@ -173,7 +173,7 @@ const SOLUTIONS = [
 const EVALUATION_CRITERIA = [
   { label: 'Integration depth & technical complexity', status: 'done', note: 'Soroban contract: 12 functions, 20 tests, require_auth enforcement, real Groth16 / BLS12-381 verifier (CAP-0052)' },
   { label: 'Impact on the Stellar ecosystem', status: 'done', note: 'Open Blockchain-as-a-Service protocol for medical data in LATAM' },
-  { label: 'Customer discovery & validation', status: 'pending', note: '3 recorded interviews — see Demo & Interviews above' },
+  { label: 'Customer discovery & validation', status: 'pending', note: '3 recorded interviews | see Demo & Interviews above' },
   { label: 'Quality of testnet deployment', status: 'done', note: `Live on Stellar Testnet · ${CONTRACT_ID.slice(0, 12)}…` },
 ]
 
@@ -364,7 +364,7 @@ export function HackathonPage({ lang }: HackathonPageProps) {
             <ResourceCard
               icon={FileText}
               title={t('hackathon', 'deck', lang)}
-              desc="Pitch deck — problem, solution, architecture, and business model."
+              desc="Pitch deck | problem, solution, architecture, and business model."
               url={DECK_URL}
               label="Open deck"
               pending={pending}
@@ -372,7 +372,7 @@ export function HackathonPage({ lang }: HackathonPageProps) {
             <ResourceCard
               icon={ExternalLink}
               title={t('hackathon', 'repo', lang)}
-              desc="Full source code — Soroban contract, React frontend, integration tests."
+              desc="Full source code | Soroban contract, React frontend, integration tests."
               url={REPO_URL}
               label="View on GitHub"
               pending={pending}

@@ -34,6 +34,10 @@ vi.mock('@/lib/ipfs', () => ({
 }))
 vi.mock('@/lib/encryption', () => ({
   decodePayload: (...a: unknown[]) => decodePayload(...(a as [])),
+  importKey: vi.fn(async () => ({}) as CryptoKey),
+}))
+vi.mock('@/lib/dockeys', () => ({
+  getStoredDocumentKey: () => null,
 }))
 vi.mock('@/lib/ecies', () => ({
   generateWrappingKey: () => new Uint8Array(32),

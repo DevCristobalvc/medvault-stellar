@@ -3,19 +3,22 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DocumentUpload } from '../components/DocumentUpload'
 
-const deriveDocumentKey = vi.fn(async () => ({}) as CryptoKey)
+const generateKey = vi.fn(async () => ({}) as CryptoKey)
+const exportKey = vi.fn(async () => 'keyB64')
 const encryptFile = vi.fn(async () => ({ ciphertext: new ArrayBuffer(8), iv: new Uint8Array(12) }))
 const encodePayload = vi.fn(() => 'payload')
 const uploadEncryptedPayload = vi.fn(async () => 'cid123')
 const registerDocument = vi.fn(async () => 'doc123')
+const saveDocumentKey = vi.fn()
 
-vi.mock('@/lib/keystore', () => ({
-  generateSalt: () => new Uint8Array(16),
-  deriveDocumentKey: (...a: unknown[]) => deriveDocumentKey(...(a as [])),
-}))
 vi.mock('@/lib/encryption', () => ({
+  generateKey: (...a: unknown[]) => generateKey(...(a as [])),
+  exportKey: (...a: unknown[]) => exportKey(...(a as [])),
   encryptFile: (...a: unknown[]) => encryptFile(...(a as [])),
   encodePayload: (...a: unknown[]) => encodePayload(...(a as [])),
+}))
+vi.mock('@/lib/dockeys', () => ({
+  saveDocumentKey: (...a: unknown[]) => saveDocumentKey(...(a as [])),
 }))
 vi.mock('@/lib/ipfs', () => ({
   uploadEncryptedPayload: (...a: unknown[]) => uploadEncryptedPayload(...(a as [])),
@@ -56,8 +59,9 @@ describe('DocumentUpload', () => {
     await user.click(screen.getByRole('button', { name: /Encrypt & Upload/i }))
 
     await waitFor(() => expect(screen.getByText(/Document registered on Stellar/i)).toBeInTheDocument())
-    expect(deriveDocumentKey).toHaveBeenCalledTimes(1)
+    expect(generateKey).toHaveBeenCalledTimes(1)
     expect(uploadEncryptedPayload).toHaveBeenCalledTimes(1)
+    expect(saveDocumentKey).toHaveBeenCalledWith('cid123', 'keyB64')
     expect(registerDocument).toHaveBeenCalledWith(PATIENT, 'cid123', 'clinical_history')
   })
 

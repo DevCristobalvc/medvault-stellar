@@ -12,7 +12,8 @@ import { useDocuments } from '@/hooks/useDocuments'
 import { getAuditLog, grantAccess, revokeAccess, type AccessEvent } from '@/lib/stellar'
 import { deriveDocumentKey } from '@/lib/keystore'
 import { downloadEncryptedPayload } from '@/lib/ipfs'
-import { decodePayload } from '@/lib/encryption'
+import { decodePayload, importKey } from '@/lib/encryption'
+import { getStoredDocumentKey } from '@/lib/dockeys'
 import { saveActiveToken, getActiveTokens, removeToken, type ActiveToken } from '@/lib/tokenstore'
 import { generateWrappingKey, encryptKeyWithWK, wkToBase64 } from '@/lib/ecies'
 import { QRGenerator } from './QRGenerator'
@@ -158,9 +159,15 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
     const expiresAt = Math.floor(Date.now() / 1000) + durationSeconds
     setGrantState((s) => s && { ...s, step: 'loading', expiresAt })
     try {
-      const payload = await downloadEncryptedPayload(selectedDoc.cid)
-      const { salt } = decodePayload(payload)
-      const aesKey = await deriveDocumentKey(salt)
+      const stored = getStoredDocumentKey(selectedDoc.cid)
+      let aesKey: CryptoKey
+      if (stored) {
+        aesKey = await importKey(stored)
+      } else {
+        const payload = await downloadEncryptedPayload(selectedDoc.cid)
+        const { salt } = decodePayload(payload)
+        aesKey = await deriveDocumentKey(salt)
+      }
       const wk = generateWrappingKey()
       const encryptedKeyBytes = await encryptKeyWithWK(aesKey, wk)
       const wrappingKeyB64 = wkToBase64(wk)

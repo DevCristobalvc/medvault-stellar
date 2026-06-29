@@ -6,10 +6,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { encryptFile, encodePayload } from '@/lib/encryption'
+import { encryptFile, encodePayload, generateKey, exportKey } from '@/lib/encryption'
 import { uploadEncryptedPayload } from '@/lib/ipfs'
 import { registerDocument } from '@/lib/stellar'
-import { generateSalt, deriveDocumentKey } from '@/lib/keystore'
+import { saveDocumentKey } from '@/lib/dockeys'
 
 type Step = 'idle' | 'encrypting' | 'uploading' | 'registering' | 'done'
 type InputMode = 'text' | 'file'
@@ -76,14 +76,14 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
 
     try {
       setStep('encrypting')
-      const salt = generateSalt()
-      const key = await deriveDocumentKey(salt)
+      const key = await generateKey()
       const data = await getDataBuffer()
       const { ciphertext, iv } = await encryptFile(data, key)
-      const payload = encodePayload(ciphertext, iv, salt)
+      const payload = encodePayload(ciphertext, iv)
 
       setStep('uploading')
       const cid = await uploadEncryptedPayload(payload, { docType, patientAddress })
+      saveDocumentKey(cid, await exportKey(key))
 
       setStep('registering')
       const documentId = await registerDocument(patientAddress, cid, docType)

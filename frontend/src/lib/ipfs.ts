@@ -1,4 +1,5 @@
 const UPLOAD_TIMEOUT_MS = 60_000
+const DOWNLOAD_TIMEOUT_MS = 30_000
 
 export async function uploadEncryptedPayload(
   payload: string,
@@ -46,7 +47,21 @@ export async function uploadEncryptedPayload(
 
 export async function downloadEncryptedPayload(cid: string): Promise<string> {
   const gateway = import.meta.env.VITE_PINATA_GATEWAY?.trim() || 'gateway.pinata.cloud'
-  const res = await fetch(`https://${gateway}/ipfs/${cid}`)
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS)
+
+  let res: Response
+  try {
+    res = await fetch(`https://${gateway}/ipfs/${cid}`, { signal: controller.signal })
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new Error('IPFS download timed out after 30s')
+    }
+    throw e
+  } finally {
+    clearTimeout(timer)
+  }
+
   if (!res.ok) throw new Error(`IPFS gateway error: ${res.status}`)
   return res.text()
 }

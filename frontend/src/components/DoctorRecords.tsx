@@ -157,12 +157,13 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
   }
 
   async function openRecord(record: DoctorRecord) {
-    if (!record.encryptionKey || !record.cid) return
+    if (!record.encryptionKey) return
     setActiveRecord(record)
     setData(null)
     setError(null)
     setDecrypting(true)
     try {
+      if (!record.cid) throw new Error('Document not loaded yet. Press Refresh and try again.')
       const encryptedKeyBytes = await getEncryptedKey(record.tokenId)
       if (!encryptedKeyBytes) throw new Error('Encrypted key not found on-chain')
       const wk = base64ToWk(record.encryptionKey!)

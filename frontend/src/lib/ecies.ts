@@ -49,5 +49,15 @@ export function wkToBase64(wk: Uint8Array): string {
 }
 
 export function base64ToWk(b64: string): Uint8Array {
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+  const clean = b64.trim()
+  let raw: string
+  try {
+    raw = atob(clean)
+  } catch {
+    throw new Error('Invalid key format. Copy the key again from the patient.')
+  }
+  if (raw.length !== WK_LENGTH) {
+    throw new Error('Invalid key length. Copy the key again from the patient.')
+  }
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0))
 }

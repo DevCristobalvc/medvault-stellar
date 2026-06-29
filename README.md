@@ -15,6 +15,13 @@
 
 70% of doctors in Colombia operate with vulnerable, siloed record systems. When a patient visits a new clinic, the doctor has no access to history without phone calls, signed papers, and days of waiting. Medical data is scattered, insecure, and the patient has zero control over who reads it.
 
+**And this is not hypothetical — centralized medical databases are honeypots that keep getting hit:**
+
+- **Colombia, 2022 — Keralty / Sanitas.** The RansomHouse group breached Keralty (operator of EPS Sanitas), exfiltrated ~3 TB and **published patients' ID numbers, phones and addresses** to extort a ransom; appointment scheduling collapsed for what local press reported as ~5.5 million users. ([Infosecurity Magazine](https://www.infosecurity-magazine.com/news/ransomware-target-colombias-health/))
+- **Global, 2024 — Change Healthcare.** The **largest healthcare data breach in history**: ~190 million people exposed, a US$22M ransom paid, patients unable to fill prescriptions for weeks. ([HIPAA Journal](https://www.hipaajournal.com/biggest-healthcare-data-breaches-2024/))
+
+The common root cause is the same: patient records sit in **plaintext on a central server somebody else controls**. MedVault removes that honeypot — records are encrypted on the patient's device, so the server and IPFS only ever hold ciphertext. A full breach leaks nothing readable.
+
 ## The Solution
 
 MedVault is a **sovereign medical record vault**:

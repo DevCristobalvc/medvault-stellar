@@ -27,7 +27,8 @@ const DISCOVERY_VIDEO_URL = ''
 
 // Add news articles / studies that back the statistics. Empty = hidden.
 const SOURCES: { label: string; url: string }[] = [
-  // { label: 'El Tiempo — ransomware en salud', url: 'https://...' },
+  { label: 'Infosecurity Magazine — Keralty/Sanitas ransomware', url: 'https://www.infosecurity-magazine.com/news/ransomware-target-colombias-health/' },
+  { label: 'HIPAA Journal — Change Healthcare (190M)', url: 'https://www.hipaajournal.com/biggest-healthcare-data-breaches-2024/' },
 ]
 
 const ease = [0.22, 1, 0.36, 1] as [number, number, number, number]
@@ -245,6 +246,32 @@ export function HackathonPage({ lang }: HackathonPageProps) {
               </>
             )}
           </div>
+          <motion.div
+            initial={reduced ? false : { opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ duration: 0.5, ease }}
+            className="mb-8 rounded-xl border border-destructive/30 bg-destructive/5 p-5"
+          >
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <ShieldOff className="h-4 w-4 text-destructive" />
+              {t('problem', 'breach_h', lang)}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+              <div>
+                <p className="text-xs font-semibold text-foreground">{t('problem', 'breach_co_t', lang)}</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{t('problem', 'breach_co_d', lang)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-foreground">{t('problem', 'breach_gl_t', lang)}</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{t('problem', 'breach_gl_d', lang)}</p>
+              </div>
+            </div>
+            <p className="text-xs text-foreground/80 leading-relaxed border-t border-destructive/15 pt-3">
+              {t('problem', 'breach_tag', lang)}
+            </p>
+          </motion.div>
+
           <div className="flex flex-col gap-6">
             {PROBLEMS.map(({ key, icon: Icon }, i) => (
               <motion.div

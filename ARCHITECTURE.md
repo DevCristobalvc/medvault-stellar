@@ -195,27 +195,24 @@ sequenceDiagram
     participant P as Patient
     participant D2 as Doctor (receiver)
 
-    rect rgb(240,246,255)
-    Note over D,SC: Registration (doctor-signed)
+    autonumber
+
+    Note over D,SC: ── Registration (doctor-signed) ──
     D->>B: write clinical record
     B->>B: generateKey() + encryptFile()  (random 96-bit IV)
     B->>I: upload {iv, ct}
     I-->>B: CID
     B->>SC: register_document(doctor, patient, CID, type)  [doctor.require_auth]
     SC-->>B: document_id = sha256(CID)
-    end
 
-    rect rgb(245,255,245)
-    Note over P,SC: Grant (patient-signed)
+    Note over P,SC: ── Grant (patient-signed) ──
     P->>B: select document + duration
     B->>B: WK = random, encrypted_key = wrap(K under WK)
     P->>SC: grant_access(patient, doctor2, document_id, expires_at, encrypted_key)  [patient.require_auth]
     SC-->>P: token_id
     P-->>D2: QR / link  /doctor?token=token_id#wk=WK
-    end
 
-    rect rgb(255,250,240)
-    Note over D2,SC: Access + audit (doctor-signed)
+    Note over D2,SC: ── Access + audit (doctor-signed) ──
     D2->>SC: verify_access(token_id, doctor2)
     SC-->>D2: true (valid + not expired)
     D2->>SC: get_encrypted_key(token_id)
@@ -226,7 +223,6 @@ sequenceDiagram
     D2->>B: decryptFile() -> plaintext in RAM
     D2->>SC: log_access(doctor2, token_id, patient)  [doctor.require_auth]
     Note over SC: append-only AccessEvent
-    end
 ```
 
 ---

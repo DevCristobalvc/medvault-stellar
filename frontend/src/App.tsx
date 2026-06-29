@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
-import { ShieldCheck, Stethoscope, Home as HomeIcon, FileText, Code2, Loader2 } from 'lucide-react'
+import { ShieldCheck, Stethoscope, Home as HomeIcon, FileText, Code2, Presentation, Loader2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { WalletConnect } from '@/components/WalletConnect'
 import { LanguageSelector } from '@/components/LanguageSelector'
@@ -11,6 +11,7 @@ const PatientPage = lazy(() => import('@/pages/PatientPage').then((m) => ({ defa
 const DoctorPage = lazy(() => import('@/pages/DoctorPage').then((m) => ({ default: m.DoctorPage })))
 const ProtocolPage = lazy(() => import('@/pages/ProtocolPage').then((m) => ({ default: m.ProtocolPage })))
 const HackathonPage = lazy(() => import('@/pages/HackathonPage').then((m) => ({ default: m.HackathonPage })))
+const DeckPage = lazy(() => import('@/pages/DeckPage').then((m) => ({ default: m.DeckPage })))
 import { WalletProvider } from '@/contexts/WalletContext'
 import { t } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -18,16 +19,18 @@ import { cn } from '@/lib/utils'
 const BOTTOM_NAV = [
   { to: '/',          icon: HomeIcon,     key: 'home',      exact: true },
   { to: '/hackathon', icon: FileText,     key: 'hackathon', exact: false },
+  { to: '/deck',      icon: Presentation, key: 'deck',      exact: false },
   { to: '/protocol',  icon: Code2,        key: 'protocol',  exact: false },
   { to: '/patient',   icon: ShieldCheck,  key: 'vault',     exact: false },
   { to: '/doctor',    icon: Stethoscope,  key: 'doctor',    exact: false },
 ]
 
-const APP_VERSION = 'v0.4.2'
+const APP_VERSION = 'v0.4.3'
 
 const HEADER_NAV = [
   { to: '/',          key: 'home',       exact: true },
   { to: '/hackathon', key: 'hackathon',  exact: false },
+  { to: '/deck',      key: 'deck',       exact: false },
   { to: '/protocol',  key: 'protocol',   exact: false },
   { to: '/patient',   key: 'vault',      exact: false },
   { to: '/doctor',    key: 'doctor',     exact: false },
@@ -116,6 +119,7 @@ function AnimatedRoutes({ lang }: { lang: ReturnType<typeof useLanguage>['lang']
             <Route path="/doctor"    element={<DoctorPage />} />
             <Route path="/doctor/upload" element={<DoctorPage />} />
             <Route path="/hackathon" element={<HackathonPage lang={lang} />} />
+            <Route path="/deck"      element={<DeckPage />} />
           </Routes>
         </Suspense>
       </motion.div>

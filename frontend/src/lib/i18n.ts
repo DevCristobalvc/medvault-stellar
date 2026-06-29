@@ -14,6 +14,7 @@ const translations = {
     vault:      { en: 'Patient',   es: 'Paciente',    pt: 'Paciente' },
     doctor:     { en: 'Doctor',    es: 'Doctor',      pt: 'Médico' },
     hackathon:  { en: 'Pitch Deck', es: 'Pitch Deck', pt: 'Pitch Deck' },
+    deck:       { en: 'Deck',       es: 'Deck',        pt: 'Deck' },
   },
   home: {
     badge:    { en: 'Built on Stellar Testnet', es: 'Construido en Stellar Testnet', pt: 'Construído na Stellar Testnet' },

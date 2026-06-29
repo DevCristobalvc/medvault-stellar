@@ -13,7 +13,7 @@ const translations = {
     protocol:   { en: 'Protocol',  es: 'Protocolo',   pt: 'Protocolo' },
     vault:      { en: 'Patient',   es: 'Paciente',    pt: 'Paciente' },
     doctor:     { en: 'Doctor',    es: 'Doctor',      pt: 'Médico' },
-    hackathon:  { en: 'Pitch Deck', es: 'Pitch Deck', pt: 'Pitch Deck' },
+    hackathon:  { en: 'Hackathon', es: 'Hackathon', pt: 'Hackathon' },
     deck:       { en: 'Deck',       es: 'Deck',        pt: 'Deck' },
   },
   home: {
@@ -79,7 +79,7 @@ const translations = {
     integrate_desc: { en: 'Any system can interact with the MedVault contract directly. No SDK required — just the Stellar SDK and any Stellar wallet.', es: 'Cualquier sistema puede interactuar directamente con el contrato MedVault. Sin SDK propio — solo el Stellar SDK y cualquier wallet de Stellar.', pt: 'Qualquer sistema pode interagir diretamente com o contrato MedVault. Sem SDK próprio — apenas o Stellar SDK e qualquer carteira Stellar.' },
   },
   hackathon: {
-    badge:    { en: 'Pitch Deck · Stellar PULSO', es: 'Pitch Deck · Stellar PULSO', pt: 'Pitch Deck · Stellar PULSO' },
+    badge:    { en: 'Hackathon Submission · Stellar PULSO', es: 'Entrega de Hackathon · Stellar PULSO', pt: 'Entrega de Hackathon · Stellar PULSO' },
     headline: { en: 'MedVault — Hackathon PULSO Stellar', es: 'MedVault — Hackathon PULSO Stellar', pt: 'MedVault — Hackathon PULSO Stellar' },
     sub:      { en: 'Sovereign medical records on Stellar. Below: the problem, our solution, the demo, and every submission material in one place.', es: 'Historias clínicas soberanas sobre Stellar. Abajo: el problema, nuestra solución, el demo y todos los materiales de entrega en un solo lugar.', pt: 'Prontuários soberanos na Stellar. Abaixo: o problema, nossa solução, o demo e todos os materiais de entrega num só lugar.' },
     problem_h:  { en: 'The Problem', es: 'El Problema', pt: 'O Problema' },

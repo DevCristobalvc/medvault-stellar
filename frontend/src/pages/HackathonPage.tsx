@@ -21,7 +21,7 @@ const DEMO_URL = 'https://medvault-stellar.vercel.app'
 const EXPLORER_URL = `https://stellar.expert/explorer/testnet/contract/${CONTRACT_ID}`
 
 // Paste the submission links here (YouTube / Drive / PDF). Empty = "Coming soon".
-const DECK_URL = ''
+const DECK_URL = '/deck.pdf'
 const DEMO_VIDEO_URL = ''
 const DISCOVERY_VIDEO_URL = ''
 

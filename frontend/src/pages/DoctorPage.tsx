@@ -6,7 +6,7 @@ import { DoctorRecords } from '@/components/DoctorRecords'
 import { DocumentUpload } from '@/components/DocumentUpload'
 import { DoctorKeySetup } from '@/components/DoctorKeySetup'
 import { WalletConnect } from '@/components/WalletConnect'
-import { Stethoscope, Upload, FolderOpen } from 'lucide-react'
+import { Stethoscope, Upload, FolderOpen, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { t, type Lang } from '@/lib/i18n'
 
@@ -59,7 +59,7 @@ export function DoctorPage({ lang }: DoctorPageProps) {
         {([
           { id: 'upload', label: t('doctor', 'tab_upload', lang), icon: Upload },
           { id: 'records', label: t('doctor', 'tab_records', lang), icon: FolderOpen },
-        ] as { id: Tab; label: string; icon: React.ElementType }[]).map(({ id, label, icon: Icon }) => (
+        ] as { id: Tab; label: string; icon: LucideIcon }[]).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}

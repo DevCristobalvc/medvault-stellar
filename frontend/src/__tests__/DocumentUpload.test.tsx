@@ -25,6 +25,7 @@ vi.mock('@/lib/ipfs', () => ({
 }))
 vi.mock('@/lib/stellar', () => ({
   registerDocument: (...a: unknown[]) => registerDocument(...(a as [])),
+  DOC_TYPES: ['clinical_history', 'lab_result', 'imaging', 'prescription', 'other'],
 }))
 
 const PATIENT = 'GA3FTC5BABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJ3VUZ'
@@ -65,28 +66,23 @@ describe('DocumentUpload', () => {
     expect(registerDocument).toHaveBeenCalledWith(PATIENT, 'cid123', 'clinical_history')
   })
 
-  it('derives docType from the file name when uploading a file', async () => {
+  it('registers with the selected docType', async () => {
     const user = userEvent.setup()
-    const { container } = render(<DocumentUpload lang="en" />)
+    render(<DocumentUpload lang="en" />)
     await user.type(screen.getByPlaceholderText('G...'), PATIENT)
-    await user.click(screen.getByRole('button', { name: /Upload file/i }))
-
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
-    await user.upload(fileInput, new File(['x-ray'], 'chest-xray.png', { type: 'image/png' }))
+    await user.selectOptions(screen.getByRole('combobox'), 'imaging')
+    await user.type(screen.getByPlaceholderText(/Write the clinical record/i), 'Blood test normal')
     await user.click(screen.getByRole('button', { name: /Encrypt & Upload/i }))
 
     await waitFor(() => expect(screen.getByText(/Document registered on Stellar/i)).toBeInTheDocument())
-    expect(registerDocument).toHaveBeenCalledWith(PATIENT, 'cid123', 'chest-xray')
+    expect(registerDocument).toHaveBeenCalledWith(PATIENT, 'cid123', 'imaging')
   })
 
-  it('keeps a manually entered docType when a file is selected', async () => {
+  it('keeps the selected docType when a file is selected', async () => {
     const user = userEvent.setup()
     const { container } = render(<DocumentUpload lang="en" />)
     await user.type(screen.getByPlaceholderText('G...'), PATIENT)
-
-    const docTypeInput = screen.getByPlaceholderText('clinical_history')
-    await user.clear(docTypeInput)
-    await user.type(docTypeInput, 'radiology')
+    await user.selectOptions(screen.getByRole('combobox'), 'prescription')
 
     await user.click(screen.getByRole('button', { name: /Upload file/i }))
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
@@ -94,6 +90,6 @@ describe('DocumentUpload', () => {
     await user.click(screen.getByRole('button', { name: /Encrypt & Upload/i }))
 
     await waitFor(() => expect(screen.getByText(/Document registered on Stellar/i)).toBeInTheDocument())
-    expect(registerDocument).toHaveBeenCalledWith(PATIENT, 'cid123', 'radiology')
+    expect(registerDocument).toHaveBeenCalledWith(PATIENT, 'cid123', 'prescription')
   })
 })

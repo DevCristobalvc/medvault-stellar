@@ -25,7 +25,11 @@
                   "string": "QmTestCID123"
                 },
                 {
-                  "string": "clinical_history"
+                  "vec": [
+                    {
+                      "symbol": "ClinicalHistory"
+                    }
+                  ]
                 }
               ]
             }
@@ -87,7 +91,11 @@
                       "symbol": "doc_type"
                     },
                     "val": {
-                      "string": "clinical_history"
+                      "vec": [
+                        {
+                          "symbol": "ClinicalHistory"
+                        }
+                      ]
                     }
                   },
                   {

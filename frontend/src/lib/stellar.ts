@@ -13,11 +13,40 @@ import { NETWORK_PASSPHRASE, RPC_URL, SIM_SOURCE } from '@/lib/network'
 
 const CONTRACT_ID = import.meta.env.VITE_CONTRACT_ID?.trim() || 'CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3'
 
+export type DocType = 'clinical_history' | 'lab_result' | 'imaging' | 'prescription' | 'other'
+
+export const DOC_TYPES: DocType[] = ['clinical_history', 'lab_result', 'imaging', 'prescription', 'other']
+
+const DOC_TYPE_TO_VARIANT: Record<DocType, string> = {
+  clinical_history: 'ClinicalHistory',
+  lab_result: 'LabResult',
+  imaging: 'Imaging',
+  prescription: 'Prescription',
+  other: 'Other',
+}
+
+const VARIANT_TO_DOC_TYPE: Record<string, DocType> = {
+  ClinicalHistory: 'clinical_history',
+  LabResult: 'lab_result',
+  Imaging: 'imaging',
+  Prescription: 'prescription',
+  Other: 'other',
+}
+
+function docTypeToScVal(docType: DocType): xdr.ScVal {
+  return xdr.ScVal.scvVec([xdr.ScVal.scvSymbol(DOC_TYPE_TO_VARIANT[docType] || 'Other')])
+}
+
+function docTypeFromNative(raw: unknown): DocType {
+  const variant = Array.isArray(raw) ? String(raw[0]) : String(raw)
+  return VARIANT_TO_DOC_TYPE[variant] || 'other'
+}
+
 export interface Document {
   doctor: string
   patient: string
   cid: string
-  docType: string
+  docType: DocType
   createdAt: number
 }
 
@@ -184,7 +213,7 @@ export async function getPubkey(ownerAddress: string): Promise<Uint8Array | null
 export async function registerDocument(
   patientAddress: string,
   cid: string,
-  docType: string
+  docType: DocType
 ): Promise<string> {
   const doctor = await getPublicKey()
 
@@ -194,7 +223,7 @@ export async function registerDocument(
       new Address(doctor).toScVal(),
       new Address(patientAddress).toScVal(),
       nativeToScVal(cid, { type: 'string' }),
-      nativeToScVal(docType, { type: 'string' }),
+      docTypeToScVal(docType),
     ],
     doctor
   )
@@ -365,7 +394,7 @@ export async function getDocument(documentId: string): Promise<Document | null> 
     doctor: string
     patient: string
     cid: string
-    doc_type: string
+    doc_type: unknown
     created_at: bigint
   } | null
 
@@ -374,7 +403,7 @@ export async function getDocument(documentId: string): Promise<Document | null> 
     doctor: raw.doctor,
     patient: raw.patient,
     cid: raw.cid,
-    docType: raw.doc_type,
+    docType: docTypeFromNative(raw.doc_type),
     createdAt: Number(raw.created_at),
   }
 }

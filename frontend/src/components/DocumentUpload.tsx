@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { encryptFile, encodePayload, generateKey, exportKey } from '@/lib/encryption'
 import { uploadEncryptedPayload } from '@/lib/ipfs'
-import { registerDocument } from '@/lib/stellar'
+import { registerDocument, DOC_TYPES, type DocType } from '@/lib/stellar'
 import { saveDocumentKey } from '@/lib/dockeys'
 import { t, type Lang } from '@/lib/i18n'
 
@@ -37,8 +37,7 @@ export function DocumentUpload({ onSuccess, lang }: DocumentUploadProps) {
   const [content, setContent] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [patientAddress, setPatientAddress] = useState('')
-  const [docType, setDocType] = useState('clinical_history')
-  const [docTypeTouched, setDocTypeTouched] = useState(false)
+  const [docType, setDocType] = useState<DocType>('clinical_history')
   const [step, setStep] = useState<Step>('idle')
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -46,12 +45,7 @@ export function DocumentUpload({ onSuccess, lang }: DocumentUploadProps) {
   const busy = step !== 'idle' && step !== 'done'
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0] ?? null
-    setFile(f)
-    if (f && !docTypeTouched) {
-      const base = f.name.replace(/\.[^/.]+$/, '').trim()
-      setDocType(base || f.name)
-    }
+    setFile(e.target.files?.[0] ?? null)
   }
 
   function clearFile() {
@@ -142,13 +136,17 @@ export function DocumentUpload({ onSuccess, lang }: DocumentUploadProps) {
 
           <div className="space-y-1.5">
             <Label htmlFor="doctype">{t('doctor', 'doc_type', lang)}</Label>
-            <Input
+            <select
               id="doctype"
               value={docType}
-              onChange={(e) => { setDocType(e.target.value); setDocTypeTouched(true) }}
-              placeholder="clinical_history"
+              onChange={(e) => setDocType(e.target.value as DocType)}
               disabled={busy}
-            />
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {DOC_TYPES.map((dt) => (
+                <option key={dt} value={dt}>{t('doctype', dt, lang)}</option>
+              ))}
+            </select>
           </div>
 
           <Separator />
@@ -158,10 +156,7 @@ export function DocumentUpload({ onSuccess, lang }: DocumentUploadProps) {
               <button
                 key={m}
                 type="button"
-                onClick={() => {
-                  setMode(m); setContent(''); clearFile()
-                  if (!docTypeTouched) setDocType('clinical_history')
-                }}
+                onClick={() => { setMode(m); setContent(''); clearFile() }}
                 disabled={busy}
                 className={`flex-1 rounded-md py-1.5 text-xs font-medium transition-colors ${
                   mode === m

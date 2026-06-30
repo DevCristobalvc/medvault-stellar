@@ -25,13 +25,13 @@ fn test_register_document() {
     let doc_id = client.register_document(
         &doctor, &patient,
         &String::from_str(&env, "QmTestCID123"),
-        &String::from_str(&env, "clinical_history"),
+        &DocType::ClinicalHistory,
     );
 
     let doc = client.get_document(&doc_id).unwrap();
     assert_eq!(doc.doctor, doctor);
     assert_eq!(doc.patient, patient);
-    assert_eq!(doc.doc_type, String::from_str(&env, "clinical_history"));
+    assert_eq!(doc.doc_type, DocType::ClinicalHistory);
 }
 
 #[test]
@@ -65,8 +65,8 @@ fn test_patient_documents_list() {
     let doctor = Address::generate(&env);
     let patient = Address::generate(&env);
 
-    client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID1"), &String::from_str(&env, "exam"));
-    client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID2"), &String::from_str(&env, "prescription"));
+    client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID1"), &DocType::LabResult);
+    client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID2"), &DocType::Prescription);
 
     assert_eq!(client.get_patient_documents(&patient).len(), 2);
 }
@@ -77,7 +77,7 @@ fn test_grant_and_verify_access_valid() {
     let doctor = Address::generate(&env);
     let patient = Address::generate(&env);
 
-    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &String::from_str(&env, "history"));
+    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &DocType::ClinicalHistory);
 
     env.ledger().set_timestamp(1000);
     let token_id = client.grant_access(&patient, &doctor, &doc_id, &9999, &fake_key(&env));
@@ -91,7 +91,7 @@ fn test_verify_access_expired() {
     let doctor = Address::generate(&env);
     let patient = Address::generate(&env);
 
-    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &String::from_str(&env, "history"));
+    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &DocType::ClinicalHistory);
 
     env.ledger().set_timestamp(1000);
     let token_id = client.grant_access(&patient, &doctor, &doc_id, &500, &fake_key(&env));
@@ -106,7 +106,7 @@ fn test_verify_access_wrong_doctor() {
     let wrong_doctor = Address::generate(&env);
     let patient = Address::generate(&env);
 
-    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &String::from_str(&env, "history"));
+    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &DocType::ClinicalHistory);
 
     env.ledger().set_timestamp(1000);
     let token_id = client.grant_access(&patient, &doctor, &doc_id, &9999, &fake_key(&env));
@@ -120,7 +120,7 @@ fn test_audit_log() {
     let doctor = Address::generate(&env);
     let patient = Address::generate(&env);
 
-    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &String::from_str(&env, "history"));
+    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &DocType::ClinicalHistory);
 
     env.ledger().set_timestamp(1000);
     let token_id = client.grant_access(&patient, &doctor, &doc_id, &9999, &fake_key(&env));
@@ -144,7 +144,7 @@ fn test_get_token_info_valid() {
     let doctor = Address::generate(&env);
     let patient = Address::generate(&env);
 
-    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &String::from_str(&env, "history"));
+    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &DocType::ClinicalHistory);
 
     env.ledger().set_timestamp(1000);
     let token_id = client.grant_access(&patient, &doctor, &doc_id, &9999, &fake_key(&env));
@@ -167,7 +167,7 @@ fn test_get_encrypted_key() {
     let doctor = Address::generate(&env);
     let patient = Address::generate(&env);
 
-    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &String::from_str(&env, "history"));
+    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &DocType::ClinicalHistory);
 
     let key_payload = Bytes::from_slice(&env, &[42u8; 60]);
     env.ledger().set_timestamp(1000);
@@ -190,7 +190,7 @@ fn test_revoke_access() {
     let doctor = Address::generate(&env);
     let patient = Address::generate(&env);
 
-    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &String::from_str(&env, "history"));
+    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &DocType::ClinicalHistory);
 
     env.ledger().set_timestamp(1000);
     let token_id = client.grant_access(&patient, &doctor, &doc_id, &9999, &fake_key(&env));
@@ -207,7 +207,7 @@ fn test_revoke_wrong_patient() {
     let patient = Address::generate(&env);
     let attacker = Address::generate(&env);
 
-    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &String::from_str(&env, "history"));
+    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &DocType::ClinicalHistory);
 
     env.ledger().set_timestamp(1000);
     let token_id = client.grant_access(&patient, &doctor, &doc_id, &9999, &fake_key(&env));
@@ -221,7 +221,7 @@ fn test_get_doctor_tokens() {
     let doctor = Address::generate(&env);
     let patient = Address::generate(&env);
 
-    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &String::from_str(&env, "history"));
+    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &DocType::ClinicalHistory);
 
     env.ledger().set_timestamp(1000);
     let t1 = client.grant_access(&patient, &doctor, &doc_id, &9999, &fake_key(&env));
@@ -247,7 +247,7 @@ fn test_register_document_requires_doctor_auth() {
     let doctor = Address::generate(&env);
     let patient = Address::generate(&env);
 
-    client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &String::from_str(&env, "history"));
+    client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &DocType::ClinicalHistory);
 
     let auths = env.auths();
     assert_eq!(auths.len(), 1);
@@ -289,7 +289,7 @@ fn test_revoke_access_requires_patient_auth() {
     let doctor = Address::generate(&env);
     let patient = Address::generate(&env);
 
-    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &String::from_str(&env, "history"));
+    let doc_id = client.register_document(&doctor, &patient, &String::from_str(&env, "QmCID"), &DocType::ClinicalHistory);
     env.ledger().set_timestamp(1000);
     let token_id = client.grant_access(&patient, &doctor, &doc_id, &9999, &fake_key(&env));
 

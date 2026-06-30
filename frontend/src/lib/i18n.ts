@@ -211,6 +211,13 @@ const translations = {
     disconnect:       { en: 'Disconnect', es: 'Desconectar', pt: 'Desconectar' },
     connect_wallet:   { en: 'Connect Wallet', es: 'Conectar wallet', pt: 'Conectar carteira' },
   },
+  doctype: {
+    clinical_history: { en: 'Clinical history', es: 'Historia clínica', pt: 'Histórico clínico' },
+    lab_result:       { en: 'Lab result', es: 'Resultado de laboratorio', pt: 'Resultado de laboratório' },
+    imaging:          { en: 'Imaging', es: 'Imagenología', pt: 'Imagem' },
+    prescription:     { en: 'Prescription', es: 'Receta', pt: 'Receita' },
+    other:            { en: 'Other', es: 'Otro', pt: 'Outro' },
+  },
 } as const
 
 export type TranslationKey = keyof typeof translations

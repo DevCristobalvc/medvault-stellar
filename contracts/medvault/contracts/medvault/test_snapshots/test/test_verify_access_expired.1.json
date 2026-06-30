@@ -25,7 +25,11 @@
                   "string": "QmCID"
                 },
                 {
-                  "string": "history"
+                  "vec": [
+                    {
+                      "symbol": "ClinicalHistory"
+                    }
+                  ]
                 }
               ]
             }
@@ -149,7 +153,11 @@
                       "symbol": "doc_type"
                     },
                     "val": {
-                      "string": "history"
+                      "vec": [
+                        {
+                          "symbol": "ClinicalHistory"
+                        }
+                      ]
                     }
                   },
                   {

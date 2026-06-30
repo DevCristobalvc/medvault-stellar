@@ -25,7 +25,11 @@
                   "string": "QmCID1"
                 },
                 {
-                  "string": "exam"
+                  "vec": [
+                    {
+                      "symbol": "LabResult"
+                    }
+                  ]
                 }
               ]
             }
@@ -53,7 +57,11 @@
                   "string": "QmCID2"
                 },
                 {
-                  "string": "prescription"
+                  "vec": [
+                    {
+                      "symbol": "Prescription"
+                    }
+                  ]
                 }
               ]
             }
@@ -115,7 +123,11 @@
                       "symbol": "doc_type"
                     },
                     "val": {
-                      "string": "exam"
+                      "vec": [
+                        {
+                          "symbol": "LabResult"
+                        }
+                      ]
                     }
                   },
                   {
@@ -183,7 +195,11 @@
                       "symbol": "doc_type"
                     },
                     "val": {
-                      "string": "prescription"
+                      "vec": [
+                        {
+                          "symbol": "Prescription"
+                        }
+                      ]
                     }
                   },
                   {

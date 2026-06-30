@@ -7,12 +7,22 @@ use soroban_sdk::{
 };
 
 #[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DocType {
+    ClinicalHistory,
+    LabResult,
+    Imaging,
+    Prescription,
+    Other,
+}
+
+#[contracttype]
 #[derive(Clone)]
 pub struct Document {
     pub doctor: Address,
     pub patient: Address,
     pub cid: String,
-    pub doc_type: String,
+    pub doc_type: DocType,
     pub created_at: u64,
 }
 
@@ -74,7 +84,7 @@ impl MedVaultContract {
         doctor: Address,
         patient: Address,
         cid: String,
-        doc_type: String,
+        doc_type: DocType,
     ) -> BytesN<32> {
         doctor.require_auth();
 

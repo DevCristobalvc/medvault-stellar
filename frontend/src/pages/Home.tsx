@@ -1,8 +1,9 @@
-import { ShieldCheck, ArrowRight, Fingerprint } from 'lucide-react'
+import { ArrowRight, Fingerprint } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { buttonVariants } from '@/components/ui/button'
 import { StarField } from '@/components/StarField'
+import { Hero3D } from '@/components/Hero3D'
 import { MermaidDiagram } from '@/components/MermaidDiagram'
 import { cn } from '@/lib/utils'
 import { t, type Lang } from '@/lib/i18n'
@@ -80,20 +81,7 @@ export function Home({ lang }: HomeProps) {
           </>
         )}
 
-        <motion.div
-          initial={reduced ? false : { opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="relative z-10"
-        >
-          <motion.div
-            animate={reduced ? {} : { boxShadow: ['0 0 0 0 rgba(27,79,216,0)', '0 0 0 10px rgba(27,79,216,0.08)', '0 0 0 0 rgba(27,79,216,0)'] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeOut', delay: 1 }}
-            className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-2 shadow-md"
-          >
-            <ShieldCheck className="h-7 w-7 md:h-8 md:w-8 text-primary-foreground" />
-          </motion.div>
-        </motion.div>
+        <Hero3D />
 
         <motion.div
           initial={reduced ? false : { opacity: 0, scale: 0.9 }}

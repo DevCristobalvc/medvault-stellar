@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import {
   ExternalLink, FileText, Video, Users, Star, ArrowRight,
   FileX, Clock, ShieldOff, ShieldCheck, Timer, ScrollText,
+  type LucideIcon,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -92,7 +93,7 @@ function youTubeId(url: string): string | null {
 }
 
 function VideoCard({ icon: Icon, title, desc, url, pending }: {
-  icon: React.ElementType; title: string; desc: string; url: string; pending: string
+  icon: LucideIcon; title: string; desc: string; url: string; pending: string
 }) {
   const id = url ? youTubeId(url) : null
   return (
@@ -124,7 +125,7 @@ function VideoCard({ icon: Icon, title, desc, url, pending }: {
 }
 
 function ResourceCard({ icon: Icon, title, desc, url, label, pending, secondaryUrl, secondaryLabel }: {
-  icon: React.ElementType; title: string; desc: string; url: string; label: string; pending: string
+  icon: LucideIcon; title: string; desc: string; url: string; label: string; pending: string
   secondaryUrl?: string; secondaryLabel?: string
 }) {
   return (

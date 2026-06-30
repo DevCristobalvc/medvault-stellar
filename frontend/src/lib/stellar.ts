@@ -1,6 +1,5 @@
 import {
   Contract,
-  Networks,
   rpc as SorobanRpc,
   TransactionBuilder,
   BASE_FEE,
@@ -10,10 +9,9 @@ import {
   Address,
 } from '@stellar/stellar-sdk'
 import { getKitAddress, signTx } from '@/lib/walletKit'
+import { NETWORK_PASSPHRASE, RPC_URL, SIM_SOURCE } from '@/lib/network'
 
-const RPC_URL = import.meta.env.VITE_SOROBAN_RPC?.trim() || 'https://soroban-testnet.stellar.org'
 const CONTRACT_ID = import.meta.env.VITE_CONTRACT_ID?.trim() || 'CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3'
-const NETWORK_PASSPHRASE = Networks.TESTNET
 
 export interface Document {
   doctor: string
@@ -134,8 +132,6 @@ async function buildAndSubmit(
 
   return (getResult as SorobanRpc.Api.GetSuccessfulTransactionResponse).returnValue!
 }
-
-const SIM_SOURCE = 'GAGJANUXK2IRADH7Z5DZKABFZI6VSFZSB6SJDERLZRXBNQUWWDFZQMSH'
 
 async function readOnlyFrom(
   method: string,

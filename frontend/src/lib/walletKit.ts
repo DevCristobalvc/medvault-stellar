@@ -1,4 +1,5 @@
 import type { ModuleInterface } from '@creit.tech/stellar-wallets-kit'
+import { NETWORK_PASSPHRASE, IS_MAINNET } from '@/lib/network'
 
 type KitClass = typeof import('@creit.tech/stellar-wallets-kit').StellarWalletsKit
 
@@ -7,7 +8,6 @@ const WC_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID?.trim()
 
 let initPromise: Promise<void> | null = null
 let Kit: KitClass | null = null
-let testnetPassphrase = ''
 let currentAddress: string | null = null
 
 async function buildModules(): Promise<ModuleInterface[]> {
@@ -50,7 +50,9 @@ async function buildModules(): Promise<ModuleInterface[]> {
           url: origin,
           icons: [`${origin}/icon-192.png`],
         },
-        allowedChains: [WalletConnectTargetChain.TESTNET],
+        allowedChains: [
+          IS_MAINNET ? WalletConnectTargetChain.PUBLIC : WalletConnectTargetChain.TESTNET,
+        ],
       })
     )
   }
@@ -73,11 +75,10 @@ function ensureInit(): Promise<void> {
     initPromise = (async () => {
       const mod = await import('@creit.tech/stellar-wallets-kit')
       Kit = mod.StellarWalletsKit
-      testnetPassphrase = mod.Networks.TESTNET
       const modules = await buildModules()
       Kit.init({
         modules,
-        network: mod.Networks.TESTNET,
+        network: NETWORK_PASSPHRASE,
         selectedWalletId: localStorage.getItem(SELECTED_KEY) || undefined,
       })
       void prewarmFreighter()
@@ -141,7 +142,7 @@ export async function signTx(xdr: string): Promise<string> {
   const address = await getKitAddress()
   const { signedTxXdr } = await kit.signTransaction(xdr, {
     address,
-    networkPassphrase: testnetPassphrase,
+    networkPassphrase: NETWORK_PASSPHRASE,
   })
   return signedTxXdr
 }
@@ -151,7 +152,7 @@ export async function signMessageWithWallet(message: string): Promise<string> {
   const address = await getKitAddress()
   const { signedMessage } = await kit.signMessage(message, {
     address,
-    networkPassphrase: testnetPassphrase,
+    networkPassphrase: NETWORK_PASSPHRASE,
   })
   if (!signedMessage) throw new Error('Wallet returned an empty signature')
   if (typeof signedMessage === 'string') return signedMessage

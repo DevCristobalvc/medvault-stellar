@@ -15,8 +15,34 @@ import {
 
 interface ProtocolPageProps { lang: Lang }
 
-const CONTRACT_ID = 'CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK'
+const CONTRACT_ID = 'CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3'
+const PREV_CONTRACT_ID = 'CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK'
 const REPO_URL = 'https://github.com/DevCristobalvc/medvault-stellar'
+
+const expertUrl = (id: string) => `https://stellar.expert/explorer/testnet/contract/${id}`
+
+const DEPLOYMENTS = [
+  {
+    id: CONTRACT_ID,
+    tag: 'v0.5 · ECIES',
+    current: true,
+    note: {
+      en: 'Current deployment. Adds register_pubkey / get_pubkey: an on-chain X25519 public-key directory enabling ECIES sharing (no copyable key). 14 exported functions.',
+      es: 'Despliegue actual. Agrega register_pubkey / get_pubkey: un directorio on-chain de claves públicas X25519 que habilita el compartir con ECIES (sin clave copiable). 14 funciones exportadas.',
+      pt: 'Implantação atual. Adiciona register_pubkey / get_pubkey: um diretório on-chain de chaves públicas X25519 que habilita o compartilhamento com ECIES (sem chave copiável). 14 funções exportadas.',
+    },
+  },
+  {
+    id: PREV_CONTRACT_ID,
+    tag: 'v0.4 · KEM',
+    current: false,
+    note: {
+      en: 'Previous deployment, kept for traceability. 12 functions, exercised end-to-end by integration_test.sh (register → grant → verify → key round-trip → log → revoke, proving require_auth on-chain).',
+      es: 'Despliegue anterior, conservado por trazabilidad. 12 funciones, probado de extremo a extremo por integration_test.sh (register → grant → verify → round-trip de clave → log → revoke, demostrando require_auth on-chain).',
+      pt: 'Implantação anterior, mantida por rastreabilidade. 12 funções, testado de ponta a ponta por integration_test.sh (register → grant → verify → round-trip da chave → log → revoke, provando require_auth on-chain).',
+    },
+  },
+]
 
 const REPOS = [
   { label: 'Monorepo (frontend + contract + circuits)', sub: 'github.com/DevCristobalvc/medvault-stellar', url: REPO_URL },
@@ -37,7 +63,9 @@ const ZK_JWT_COPY = {
 
 const ENDPOINTS = [
   { fn: 'register_document', sig: '(doctor, patient, cid, doc_type) → doc_id', auth: 'Doctor',   storage: 'Persistent', desc: { en: 'Store the IPFS CID and metadata of an encrypted document under the patient. Returns the deterministic document_id (BytesN<32>).', es: 'Guarda el CID de IPFS y la metadata de un documento cifrado bajo el paciente. Devuelve el document_id determinístico (BytesN<32>).', pt: 'Armazena o CID do IPFS e os metadados de um documento cifrado sob o paciente. Retorna o document_id determinístico (BytesN<32>).' } },
-  { fn: 'grant_access',      sig: '(patient, doctor, doc_id, expires_at, encrypted_key) → token_id', auth: 'Patient',  storage: 'Temporary',  desc: { en: 'Patient mints a time-bound access token for a doctor and stores the wrapped AES key on-chain. TTL auto-derived from expires_at (+120 ledgers).', es: 'El paciente emite un token de acceso temporizado para un médico y guarda la AES key envuelta on-chain. El TTL se deriva de expires_at (+120 ledgers).', pt: 'O paciente emite um token de acesso temporizado para um médico e armazena a AES key envolvida on-chain. O TTL deriva de expires_at (+120 ledgers).' } },
+  { fn: 'register_pubkey',   sig: '(owner, pubkey: BytesN<32>)', auth: 'Owner',    storage: 'Persistent', desc: { en: 'Doctor publishes their X25519 public key so patients can ECIES-wrap document keys to it. Key derived from a wallet signature (sign-to-derive), never leaves as a copyable secret.', es: 'El médico publica su clave pública X25519 para que los pacientes envuelvan claves de documento con ECIES hacia ella. La clave se deriva de una firma de la wallet (sign-to-derive) y nunca sale como secreto copiable.', pt: 'O médico publica sua chave pública X25519 para que pacientes envolvam chaves de documento com ECIES para ela. A chave deriva de uma assinatura da wallet (sign-to-derive) e nunca sai como segredo copiável.' } },
+  { fn: 'get_pubkey',        sig: '(owner) → Option<BytesN<32>>', auth: 'None',    storage: 'Read',       desc: { en: "Returns the owner's registered X25519 public key, or None if they haven't enabled secure receiving yet.", es: 'Devuelve la clave pública X25519 registrada del owner, o None si aún no habilitó la recepción segura.', pt: 'Retorna a chave pública X25519 registrada do owner, ou None se ainda não habilitou a recepção segura.' } },
+  { fn: 'grant_access',      sig: '(patient, doctor, doc_id, expires_at, encrypted_key) → token_id', auth: 'Patient',  storage: 'Temporary',  desc: { en: 'Patient mints a time-bound access token for a doctor and stores the ECIES-wrapped AES key on-chain. TTL auto-derived from expires_at (+120 ledgers).', es: 'El paciente emite un token de acceso temporizado para un médico y guarda la AES key envuelta con ECIES on-chain. El TTL se deriva de expires_at (+120 ledgers).', pt: 'O paciente emite um token de acesso temporizado para um médico e armazena a AES key envolvida com ECIES on-chain. O TTL deriva de expires_at (+120 ledgers).' } },
   { fn: 'verify_access',     sig: '(token_id, doctor) → bool', auth: 'None',     storage: 'Read',       desc: { en: 'Returns true only if the token exists, belongs to that doctor, and has not expired.', es: 'Devuelve true solo si el token existe, pertenece a ese médico y no ha expirado.', pt: 'Retorna true apenas se o token existe, pertence a esse médico e não expirou.' } },
   { fn: 'revoke_access',     sig: '(patient, token_id)', auth: 'Patient',  storage: 'Temporary',  desc: { en: 'Patient deletes a token before its expiry, instantly cutting the doctor off.', es: 'El paciente elimina un token antes de expirar, cortando el acceso del médico al instante.', pt: 'O paciente elimina um token antes de expirar, cortando o acesso do médico instantaneamente.' } },
   { fn: 'log_access',        sig: '(doctor, token_id, patient)', auth: 'Doctor',   storage: 'Persistent', desc: { en: 'Appends an immutable AccessEvent (doctor, timestamp) to the patient audit log.', es: 'Agrega un AccessEvent inmutable (médico, timestamp) al audit log del paciente.', pt: 'Adiciona um AccessEvent imutável (médico, timestamp) ao audit log do paciente.' } },
@@ -50,22 +78,35 @@ const ENDPOINTS = [
   { fn: 'verify_zkp_proof',  sig: '(merkle_root, proof_a, proof_b, proof_c, ic_0, ic_1, alpha_g1, beta_g2, gamma_g2, delta_g2) → bool', auth: 'None',     storage: 'Read',      desc: { en: 'Verifies a Groth16 proof on-chain via native BLS12-381 pairing_check (CAP-0052): e(-A,B)·e(α,β)·e(L,γ)·e(C,δ) == 1. Proves doctor membership without revealing identity.', es: 'Verifica una prueba Groth16 on-chain vía pairing_check nativo BLS12-381 (CAP-0052): e(-A,B)·e(α,β)·e(L,γ)·e(C,δ) == 1. Prueba la membresía del médico sin revelar identidad.', pt: 'Verifica uma prova Groth16 on-chain via pairing_check nativo BLS12-381 (CAP-0052): e(-A,B)·e(α,β)·e(L,γ)·e(C,δ) == 1. Prova a associação do médico sem revelar identidade.' } },
 ]
 
-const ARCH_DIAGRAM = `flowchart LR
-  subgraph Client["Client (Browser)"]
-    W[Stellar Wallet]
-    E[AES-256-GCM]
-    Z[Groth16 ZK Prover]
+const ARCH_DIAGRAM = `flowchart TB
+  subgraph CLIENT["Browser - patient and doctor"]
+    WALLET["Stellar wallet - sign to derive X25519 key"]
+    ENC["AES-256-GCM - encrypt and decrypt in RAM"]
+    ECIES["ECIES - wrap and unwrap with X25519 and HKDF"]
+    ZK["Groth16 prover - snarkjs and Poseidon"]
   end
-  subgraph Storage["Decentralized Storage"]
-    I[IPFS via Pinata]
-    S[Stellar Soroban]
+  subgraph SOROBAN["Stellar Soroban contract"]
+    PUBDIR["Pubkey directory - register_pubkey and get_pubkey"]
+    DOCS["Documents - register_document and get_document"]
+    GRANT["Access tokens - grant, verify and revoke"]
+    KEYBLOB["Wrapped key store - get_encrypted_key"]
+    ZKV["ZK verifier - BLS12-381 pairing check"]
+    AUDIT["Audit log - log_access and get_audit_log"]
   end
-  W -->|sign tx| S
-  E -->|ciphertext| I
-  I -->|CID| S
-  Z -->|proof| S
-  S -->|BLS12-381 pairing check| S
-  S -->|audit log| S`
+  subgraph STORAGE["IPFS via Pinata"]
+    BLOB["Encrypted blob - ciphertext and iv"]
+  end
+  WALLET -->|publish public key| PUBDIR
+  ENC -->|upload ciphertext| BLOB
+  ENC -->|CID and metadata| DOCS
+  GRANT -->|read recipient key| PUBDIR
+  ECIES -->|store wrapped key| KEYBLOB
+  ECIES -->|mint token| GRANT
+  ZK -->|submit proof| ZKV
+  ZKV -->|membership valid| GRANT
+  KEYBLOB -->|wrapped key| ECIES
+  BLOB -->|ciphertext| ENC
+  GRANT -->|record access| AUDIT`
 
 const ACCESS_DIAGRAM = `sequenceDiagram
   participant D as Doctor
@@ -73,23 +114,39 @@ const ACCESS_DIAGRAM = `sequenceDiagram
   participant SC as Soroban
   participant IP as IPFS
 
-  D->>SC: register_document(CID)
-  P->>SC: grant_access(doctor, expires)
+  Note over D,SC: One-time enrollment
+  D->>SC: register_pubkey(X25519 public key)
+
+  Note over D,IP: Doctor uploads a record
+  D->>D: AES-256-GCM encrypt
+  D->>IP: store ciphertext and iv
+  IP-->>D: CID
+  D->>SC: register_document(patient, CID, doc_type)
+
+  Note over P,SC: Patient grants time-bound access
+  P->>SC: get_pubkey(doctor)
+  SC-->>P: doctor X25519 public key
+  P->>P: ECIES wrap AES key with ephemeral X25519
+  P->>SC: grant_access(doctor, doc_id, expires_at, wrapped_key)
   SC-->>P: token_id
-  P-->>D: QR with token + key
+  P-->>D: QR with token_id only
+
+  Note over D,SC: Doctor opens the record
   D->>D: generate ZK membership proof
   D->>SC: verify_zkp_proof(proof)
-  SC-->>D: true (BLS12-381 pairing)
-  D->>SC: verify_access(token)
+  SC-->>D: true via BLS12-381 pairing
+  D->>SC: verify_access(token_id)
   SC-->>D: true
+  D->>SC: get_encrypted_key(token_id)
+  SC-->>D: wrapped AES key
   D->>IP: download(CID)
-  IP-->>D: ciphertext
-  D->>D: decrypt in RAM
-  D->>SC: log_access(token)`
+  IP-->>D: ciphertext and iv
+  D->>D: ECIES unwrap and AES decrypt in RAM
+  D->>SC: log_access(token_id)`
 
 const INTEGRATION_CODE = `import { Contract, Networks, rpc } from '@stellar/stellar-sdk'
 
-const CONTRACT = 'CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK'
+const CONTRACT = 'CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3'
 const server = new rpc.Server('https://soroban-testnet.stellar.org')
 const contract = new Contract(CONTRACT)
 
@@ -240,6 +297,20 @@ export function ProtocolPage({ lang }: ProtocolPageProps) {
       <div className="px-5 md:px-8 max-w-4xl mx-auto w-full flex flex-col gap-12 pb-16">
 
         <section>
+          <h2 className="text-base font-semibold mb-1">{t('protocol', 'arch', lang)}</h2>
+          <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{t('protocol', 'arch_sub', lang)}</p>
+          <MermaidDiagram chart={ARCH_DIAGRAM} id="arch" />
+        </section>
+
+        <section>
+          <h2 className="text-base font-semibold mb-1">{t('protocol', 'flow', lang)}</h2>
+          <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{t('protocol', 'flow_sub', lang)}</p>
+          <MermaidDiagram chart={ACCESS_DIAGRAM} id="flow" />
+        </section>
+
+        <Separator />
+
+        <section>
           <h2 className="text-base font-semibold mb-4">{t('protocol', 'endpoints', lang)}</h2>
           <div className="rounded-xl border border-border overflow-hidden">
             <table className="w-full text-sm">
@@ -268,18 +339,6 @@ export function ProtocolPage({ lang }: ProtocolPageProps) {
               </tbody>
             </table>
           </div>
-        </section>
-
-        <Separator />
-
-        <section>
-          <h2 className="text-base font-semibold mb-4">{t('protocol', 'arch', lang)}</h2>
-          <MermaidDiagram chart={ARCH_DIAGRAM} id="arch" />
-        </section>
-
-        <section>
-          <h2 className="text-base font-semibold mb-4">{t('protocol', 'flow', lang)}</h2>
-          <MermaidDiagram chart={ACCESS_DIAGRAM} id="flow" />
         </section>
 
         <Separator />
@@ -317,7 +376,7 @@ export function ProtocolPage({ lang }: ProtocolPageProps) {
         <section>
           <div className="flex items-center gap-2 mb-4">
             <h2 className="text-base font-semibold">Cryptography Roadmap</h2>
-            <Badge variant="outline" className="text-xs">v1 → v3</Badge>
+            <Badge variant="outline" className="text-xs">v1 → v4</Badge>
           </div>
 
           <div className="flex flex-col gap-3">
@@ -329,16 +388,16 @@ export function ProtocolPage({ lang }: ProtocolPageProps) {
                 status: 'live',
               },
               {
-                version: 'v2 (deployed)',
+                version: 'v2 (superseded)',
                 title: 'On-chain encrypted key (KEM)',
-                desc: 'AES key encrypted with a random wrapping key. Encrypted key stored on Soroban. Only #wk= travels in URL. Two-factor: blockchain + URL.',
-                status: 'live',
+                desc: 'AES key encrypted with a random wrapping key. Encrypted key stored on Soroban. Only #wk= travels in URL. Two-factor: blockchain + URL. Replaced by v3 ECIES.',
+                status: 'idle',
               },
               {
-                version: 'v3 (planned)',
+                version: 'v3 (current)',
                 title: 'ECIES + sign-to-derive (no copyable key)',
-                desc: 'Not shipped yet | current production is v2. The doctor signs a fixed message; an X25519 keypair is derived from that signature (seed = SHA-512(sig)[0..32]). The patient wraps the AES key via ephemeral ECDH + HKDF and stores the blob in encrypted_key (contract unchanged | Bytes is opaque). Nothing travels in the URL: decrypting requires *being* the doctor wallet, not holding a secret. Blocker under validation: signMessage must be byte-deterministic in Freighter.',
-                status: 'planned',
+                desc: 'Shipped. The doctor publishes an X25519 public key on-chain (register_pubkey), derived from a wallet signature (seed = SHA-512(sig)[0..32]) and persisted locally. The patient reads it (get_pubkey) and wraps the AES key via ephemeral X25519 ECDH + HKDF-SHA256 + AES-GCM, storing version || eph_pub || iv || ct in encrypted_key. Nothing travels in the URL or QR: decrypting requires *being* the doctor wallet. Note: cross-device re-derivation depends on signMessage being byte-deterministic in the wallet.',
+                status: 'live',
               },
               {
                 version: 'v4 (live POC)',
@@ -363,6 +422,50 @@ export function ProtocolPage({ lang }: ProtocolPageProps) {
                   <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.desc}</p>
                 </div>
               </div>
+            ))}
+          </div>
+        </section>
+
+        <Separator />
+
+        <section>
+          <h2 className="text-base font-semibold mb-1">
+            {lang === 'en' ? 'Contract deployments' : lang === 'es' ? 'Despliegues del contrato' : 'Implantações do contrato'}
+          </h2>
+          <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+            {lang === 'en'
+              ? 'Every deployment is kept on-chain and searchable. Earlier versions stay reachable for traceability and their test history.'
+              : lang === 'es'
+              ? 'Cada despliegue queda on-chain y es consultable. Las versiones anteriores siguen accesibles por trazabilidad y su historial de tests.'
+              : 'Cada implantação fica on-chain e pesquisável. Versões anteriores permanecem acessíveis por rastreabilidade e seu histórico de testes.'}
+          </p>
+          <div className="flex flex-col gap-3">
+            {DEPLOYMENTS.map((d) => (
+              <a
+                key={d.id}
+                href={expertUrl(d.id)}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-start justify-between gap-3 rounded-lg border border-border px-4 py-3 hover:bg-muted/20 transition-colors"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium">{d.tag}</span>
+                    {d.current ? (
+                      <Badge className="text-[10px] bg-green-50 text-green-700 border border-green-200 px-1.5 py-0">
+                        {lang === 'en' ? 'Active' : lang === 'es' ? 'Activo' : 'Ativo'}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        {lang === 'en' ? 'Previous' : lang === 'es' ? 'Anterior' : 'Anterior'}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="font-mono text-[11px] text-muted-foreground break-all mt-1">{d.id}</p>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{(d.note as Desc)[lang]}</p>
+                </div>
+                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />
+              </a>
             ))}
           </div>
         </section>

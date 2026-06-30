@@ -3,9 +3,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useWallet } from '@/contexts/WalletContext'
 import { cn } from '@/lib/utils'
+import { t, type Lang } from '@/lib/i18n'
 import { useState, useRef, useEffect } from 'react'
 
-export function WalletConnect() {
+export function WalletConnect({ lang }: { lang: Lang }) {
   const { state, connect, disconnect, truncate } = useWallet()
   const [open, setOpen] = useState(false)
   const [connecting, setConnecting] = useState(false)
@@ -34,7 +35,7 @@ export function WalletConnect() {
     return (
       <Badge variant="destructive" className="gap-1 py-1.5 px-3 text-xs font-medium cursor-default">
         <AlertTriangle className="h-3 w-3" />
-        Switch to Testnet
+        {t('wallet', 'switch_testnet', lang)}
       </Badge>
     )
   }
@@ -57,7 +58,7 @@ export function WalletConnect() {
         {open && (
           <div className="absolute right-0 top-full mt-1.5 w-56 rounded-lg border border-border bg-background shadow-md z-50 overflow-hidden">
             <div className="px-3 py-2.5 border-b border-border">
-              <p className="text-xs text-muted-foreground">Connected wallet</p>
+              <p className="text-xs text-muted-foreground">{t('wallet', 'connected_wallet', lang)}</p>
               <p className="font-mono text-xs text-foreground mt-0.5 truncate">{state.publicKey}</p>
             </div>
             <button
@@ -65,7 +66,7 @@ export function WalletConnect() {
               className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-destructive hover:bg-destructive/5 transition-colors"
             >
               <LogOut className="h-3.5 w-3.5" />
-              Disconnect
+              {t('wallet', 'disconnect', lang)}
             </button>
           </div>
         )}
@@ -80,7 +81,7 @@ export function WalletConnect() {
       ) : (
         <Wallet className="h-4 w-4" />
       )}
-      Connect Wallet
+      {t('wallet', 'connect_wallet', lang)}
     </Button>
   )
 }

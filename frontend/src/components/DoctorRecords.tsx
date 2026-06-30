@@ -1,104 +1,68 @@
 import { useState, useCallback } from 'react'
-import { FileText, RefreshCw, Lock, Unlock, Key } from 'lucide-react'
+import { FileText, RefreshCw, Unlock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { getDoctorTokens, getTokenInfo, getDocument, getEncryptedKey } from '@/lib/stellar'
-import { getDoctorRecords, saveDoctorRecord, updateRecordKey, type DoctorRecord } from '@/lib/doctorstore'
+import { getDoctorRecords, saveDoctorRecord, type DoctorRecord } from '@/lib/doctorstore'
 import { downloadEncryptedPayload } from '@/lib/ipfs'
 import { decryptFile, decodePayload } from '@/lib/encryption'
-import { decryptKeyWithWK, base64ToWk } from '@/lib/ecies'
+import { unwrapAesKey } from '@/lib/ecies'
+import { loadPrivateKey } from '@/lib/doctorkey'
+import { t, type Lang } from '@/lib/i18n'
 import { RecordContent } from './RecordContent'
 
 interface DoctorRecordsProps {
   doctorPublicKey: string
+  lang: Lang
 }
 
 function RecordCard({
   record,
   onOpen,
-  onProvideKey,
+  lang,
 }: {
   record: DoctorRecord & { isExpired: boolean }
   onOpen: (record: DoctorRecord) => void
-  onProvideKey: (record: DoctorRecord, key: string) => void
+  lang: Lang
 }) {
   const date = new Date(record.accessedAt * 1000).toLocaleDateString()
-  const hasKey = !!record.encryptionKey
-  const [pasting, setPasting] = useState(false)
-  const [keyInput, setKeyInput] = useState('')
 
   return (
-    <div className="flex flex-col gap-2 py-3 px-3.5 rounded-lg border border-border bg-card">
-      <div className="flex items-center gap-3">
-        <div className="rounded-md border border-border bg-muted/30 p-1.5 shrink-0">
-          <FileText className="h-4 w-4 text-muted-foreground" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium truncate capitalize">
-            {record.docType.replace(/_/g, ' ')}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {record.patientAddress.slice(0, 6)}...{record.patientAddress.slice(-4)} · {date}
-          </p>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {record.isExpired && (
-            <Badge variant="outline" className="text-[10px] text-muted-foreground px-1.5">
-              Expired
-            </Badge>
-          )}
-          {hasKey ? (
-            <Button
-              size="sm"
-              variant="default"
-              className="h-7 px-2 gap-1 text-xs"
-              onClick={() => onOpen(record)}
-            >
-              <Unlock className="h-3 w-3" />Read
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2 gap-1 text-xs"
-              onClick={() => setPasting((p) => !p)}
-            >
-              <Lock className="h-3 w-3" />Add key
-            </Button>
-          )}
-        </div>
+    <div className="flex items-center gap-3 py-3 px-3.5 rounded-lg border border-border bg-card">
+      <div className="rounded-md border border-border bg-muted/30 p-1.5 shrink-0">
+        <FileText className="h-4 w-4 text-muted-foreground" />
       </div>
-
-      {!hasKey && pasting && (
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Key className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              value={keyInput}
-              onChange={(e) => setKeyInput(e.target.value)}
-              placeholder="Paste the key shared by the patient"
-              className="font-mono text-xs h-8 pl-7"
-            />
-          </div>
-          <Button
-            size="sm"
-            className="h-8 px-3 text-xs"
-            disabled={!keyInput.trim()}
-            onClick={() => onProvideKey(record, keyInput.trim())}
-          >
-            Unlock
-          </Button>
-        </div>
-      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium truncate capitalize">
+          {record.docType.replace(/_/g, ' ')}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {record.patientAddress.slice(0, 6)}...{record.patientAddress.slice(-4)} · {date}
+        </p>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {record.isExpired && (
+          <Badge variant="outline" className="text-[10px] text-muted-foreground px-1.5">
+            {t('doctor', 'expired', lang)}
+          </Badge>
+        )}
+        <Button
+          size="sm"
+          variant="default"
+          className="h-7 px-2 gap-1 text-xs"
+          onClick={() => onOpen(record)}
+        >
+          <Unlock className="h-3 w-3" />{t('doctor', 'read', lang)}
+        </Button>
+      </div>
     </div>
   )
 }
 
-export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
+export function DoctorRecords({ doctorPublicKey, lang }: DoctorRecordsProps) {
   const [records, setRecords] = useState<(DoctorRecord & { isExpired: boolean })[]>([])
   const [loading, setLoading] = useState(false)
   const [activeRecord, setActiveRecord] = useState<DoctorRecord | null>(null)
@@ -131,7 +95,6 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
               patientAddress: tokenInfo.patient,
               createdAt: doc?.createdAt ?? 0,
               accessedAt: Math.floor(Date.now() / 1000),
-              encryptionKey: null,
             }
             saveDoctorRecord(record)
             return { ...record, isExpired }
@@ -147,33 +110,23 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
     }
   }, [doctorPublicKey])
 
-  function provideKey(record: DoctorRecord, key: string) {
-    updateRecordKey(record.tokenId, key)
-    const updated = { ...record, encryptionKey: key }
-    setRecords((prev) =>
-      prev.map((r) => (r.tokenId === record.tokenId ? { ...r, encryptionKey: key } : r))
-    )
-    openRecord(updated)
-  }
-
   async function openRecord(record: DoctorRecord) {
-    if (!record.encryptionKey) return
     setActiveRecord(record)
     setData(null)
     setError(null)
     setDecrypting(true)
     try {
-      if (!record.cid) throw new Error('Document not loaded yet. Press Refresh and try again.')
+      if (!record.cid) throw new Error(t('doctor', 'err_doc_not_loaded', lang))
       const encryptedKeyBytes = await getEncryptedKey(record.tokenId)
-      if (!encryptedKeyBytes) throw new Error('Encrypted key not found on-chain')
-      const wk = base64ToWk(record.encryptionKey!)
-      const aesKey = await decryptKeyWithWK(encryptedKeyBytes, wk)
+      if (!encryptedKeyBytes) throw new Error(t('doctor', 'err_key_not_found', lang))
+      const priv = await loadPrivateKey(doctorPublicKey)
+      const aesKey = await unwrapAesKey(encryptedKeyBytes, priv)
       const payload = await downloadEncryptedPayload(record.cid)
       const { ciphertext, iv } = decodePayload(payload)
       const plaintext = await decryptFile(ciphertext, iv, aesKey)
       setData(plaintext)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Decryption failed')
+      setError(e instanceof Error ? e.message : t('doctor', 'err_decryption_failed', lang))
     } finally {
       setDecrypting(false)
     }
@@ -183,14 +136,14 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold">Shared with me</h2>
+          <h2 className="text-base font-semibold">{t('doctor', 'shared_title', lang)}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Records patients have shared with your wallet
+            {t('doctor', 'shared_sub', lang)}
           </p>
         </div>
         <Button size="sm" variant="outline" onClick={refresh} disabled={loading} className="gap-1.5">
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('doctor', 'refresh', lang)}
         </Button>
       </div>
 
@@ -198,9 +151,9 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
         <Card className="shadow-none border-dashed">
           <CardContent className="flex flex-col items-center gap-2 py-8 text-center">
             <FileText className="h-7 w-7 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">No shared records yet</p>
+            <p className="text-sm text-muted-foreground">{t('doctor', 'empty_title', lang)}</p>
             <p className="text-xs text-muted-foreground">
-              Press Refresh after a patient shares a document with your wallet
+              {t('doctor', 'empty_sub', lang)}
             </p>
           </CardContent>
         </Card>
@@ -212,7 +165,7 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
 
       <div className="flex flex-col gap-2">
         {records.map((r) => (
-          <RecordCard key={r.tokenId} record={r} onOpen={openRecord} onProvideKey={provideKey} />
+          <RecordCard key={r.tokenId} record={r} onOpen={openRecord} lang={lang} />
         ))}
       </div>
 
@@ -237,20 +190,20 @@ export function DoctorRecords({ doctorPublicKey }: DoctorRecordsProps) {
               <>
                 <div className="flex items-center gap-2 mb-3">
                   <p className="text-xs text-muted-foreground flex-1">
-                    Patient: <span className="font-mono">{activeRecord?.patientAddress.slice(0, 8)}...{activeRecord?.patientAddress.slice(-4)}</span>
+                    {t('doctor', 'patient_label', lang)}: <span className="font-mono">{activeRecord?.patientAddress.slice(0, 8)}...{activeRecord?.patientAddress.slice(-4)}</span>
                   </p>
                   <Badge className="bg-green-50 text-green-700 border border-green-200 text-xs">
-                    Decrypted
+                    {t('doctor', 'decrypted', lang)}
                   </Badge>
                 </div>
                 <div className="rounded-lg border border-border bg-muted/20 p-3">
                   <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
-                    Clinical Record
+                    {t('doctor', 'clinical_record', lang)}
                   </p>
                   <RecordContent data={data} docType={activeRecord?.docType ?? 'document'} />
                 </div>
                 <p className="text-[10px] text-muted-foreground text-center mt-3">
-                  Clinical content stays in memory | never written to this device.
+                  {t('doctor', 'in_memory', lang)}
                 </p>
               </>
             ) : null}

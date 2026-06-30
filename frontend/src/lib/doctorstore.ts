@@ -8,7 +8,6 @@ export interface DoctorRecord {
   patientAddress: string
   createdAt: number
   accessedAt: number
-  encryptionKey: string | null
 }
 
 function load(): DoctorRecord[] {
@@ -36,13 +35,4 @@ export function saveDoctorRecord(record: DoctorRecord): void {
 
 export function getDoctorRecords(): DoctorRecord[] {
   return load().sort((a, b) => b.accessedAt - a.accessedAt)
-}
-
-export function updateRecordKey(tokenId: string, key: string): void {
-  const records = load()
-  const rec = records.find((r) => r.tokenId === tokenId)
-  if (rec) {
-    rec.encryptionKey = key
-    save(records)
-  }
 }

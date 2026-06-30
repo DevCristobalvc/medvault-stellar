@@ -8,14 +8,15 @@ const DOCTOR = 'G' + 'A'.repeat(55)
 
 let mockDocuments: typeof DOC[] = [DOC]
 let mockActiveTokens: Array<{
-  tokenId: string; documentId: string; doctorAddress: string; expiresAt: number; wrappingKey: string
+  tokenId: string; documentId: string; doctorAddress: string; expiresAt: number
 }> = []
 
 const grantAccess = vi.fn(async (..._a: unknown[]) => 'token123')
+const getPubkey = vi.fn(async () => new Uint8Array(32))
 const deriveDocumentKey = vi.fn(async () => ({}) as CryptoKey)
 const downloadEncryptedPayload = vi.fn(async () => 'payload')
 const decodePayload = vi.fn(() => ({ ciphertext: new ArrayBuffer(8), iv: new Uint8Array(12), salt: new Uint8Array(16) }))
-const encryptKeyWithWK = vi.fn(async () => new Uint8Array(60))
+const wrapAesKey = vi.fn(async () => new Uint8Array(93))
 const saveActiveToken = vi.fn()
 
 vi.mock('@/hooks/useDocuments', () => ({
@@ -24,7 +25,9 @@ vi.mock('@/hooks/useDocuments', () => ({
 vi.mock('@/lib/stellar', () => ({
   getAuditLog: vi.fn(async () => []),
   grantAccess: (...a: unknown[]) => grantAccess(...(a as [])),
+  getPubkey: (...a: unknown[]) => getPubkey(...(a as [])),
   revokeAccess: vi.fn(async () => {}),
+  isTransientError: () => false,
 }))
 vi.mock('@/lib/keystore', () => ({
   deriveDocumentKey: (...a: unknown[]) => deriveDocumentKey(...(a as [])),
@@ -40,9 +43,7 @@ vi.mock('@/lib/dockeys', () => ({
   getStoredDocumentKey: () => null,
 }))
 vi.mock('@/lib/ecies', () => ({
-  generateWrappingKey: () => new Uint8Array(32),
-  encryptKeyWithWK: (...a: unknown[]) => encryptKeyWithWK(...(a as [])),
-  wkToBase64: () => 'wkBase64',
+  wrapAesKey: (...a: unknown[]) => wrapAesKey(...(a as [])),
 }))
 vi.mock('@/lib/tokenstore', () => ({
   saveActiveToken: (...a: unknown[]) => saveActiveToken(...(a as [])),
@@ -61,19 +62,19 @@ beforeEach(() => {
 
 describe('PatientVault grant flow', () => {
   it('lists patient documents', () => {
-    render(<PatientVault publicKey="GPATIENT" />)
+    render(<PatientVault publicKey="GPATIENT" lang="en" />)
     expect(screen.getByText('clinical history')).toBeInTheDocument()
   })
 
   it('shows an empty state when there are no documents', () => {
     mockDocuments = []
-    render(<PatientVault publicKey="GPATIENT" />)
+    render(<PatientVault publicKey="GPATIENT" lang="en" />)
     expect(screen.getByText('No documents yet')).toBeInTheDocument()
   })
 
   it('validates the doctor address before continuing', async () => {
     const user = userEvent.setup()
-    render(<PatientVault publicKey="GPATIENT" />)
+    render(<PatientVault publicKey="GPATIENT" lang="en" />)
     await user.click(screen.getByText('clinical history'))
     const input = await screen.findByPlaceholderText('G...')
     await user.type(input, 'GSHORT')
@@ -82,7 +83,7 @@ describe('PatientVault grant flow', () => {
 
   it('derives the key from signature and produces a QR on grant', async () => {
     const user = userEvent.setup()
-    render(<PatientVault publicKey="GPATIENT" />)
+    render(<PatientVault publicKey="GPATIENT" lang="en" />)
 
     await user.click(screen.getByText('clinical history'))
     const input = await screen.findByPlaceholderText('G...')
@@ -106,10 +107,9 @@ describe('PatientVault grant flow', () => {
       documentId: 'doc1',
       doctorAddress: DOCTOR,
       expiresAt: Math.floor(Date.now() / 1000) + 86400,
-      wrappingKey: 'wkBase64',
     }]
     const user = userEvent.setup()
-    render(<PatientVault publicKey="GPATIENT" />)
+    render(<PatientVault publicKey="GPATIENT" lang="en" />)
 
     await user.click(screen.getByText('clinical history'))
     expect(await screen.findByText(/Active accesses \(1\)/i)).toBeInTheDocument()

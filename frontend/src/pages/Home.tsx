@@ -15,8 +15,8 @@ function journeyChart(lang: Lang): string {
   participant P as ${m('journey_patient')}
   participant S as ${m('journey_stellar')}
   participant D as ${m('journey_doctor')}
-  P->>S: ${m('journey_s1')}
-  Note over P,S: ${m('journey_note')}
+  D->>S: ${m('journey_s1')}
+  Note over D,S: ${m('journey_note')}
   P->>D: ${m('journey_s2')}
   D->>S: ${m('journey_s3')}
   Note over D,S: ${m('journey_zk')}

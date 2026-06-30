@@ -1,63 +1,57 @@
-const ALGO = 'AES-GCM'
-const WK_LENGTH = 32
+import { x25519 } from '@noble/curves/ed25519.js'
+import { hkdf } from '@noble/hashes/hkdf.js'
+import { sha256 } from '@noble/hashes/sha2.js'
+
+const VERSION = 0x03
+const PUB_LENGTH = 32
 const IV_LENGTH = 12
+const HKDF_INFO = new TextEncoder().encode('medvault-ecies-v3')
 
-export function generateWrappingKey(): Uint8Array {
-  return crypto.getRandomValues(new Uint8Array(WK_LENGTH))
+function deriveSharedKey(shared: Uint8Array, ephPub: Uint8Array): Uint8Array {
+  return hkdf(sha256, shared, ephPub, HKDF_INFO, 32)
 }
 
-export async function encryptKeyWithWK(
-  aesKey: CryptoKey,
-  wk: Uint8Array
-): Promise<Uint8Array> {
-  const rawKey = await crypto.subtle.exportKey('raw', aesKey)
-  const ivRaw = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
-  const iv = ivRaw.buffer.slice(0) as ArrayBuffer
-  const wkBuf = wk.buffer.slice(0) as ArrayBuffer
-  const wkCrypto = await crypto.subtle.importKey(
-    'raw', wkBuf, { name: ALGO, length: WK_LENGTH * 8 }, false, ['encrypt']
-  )
-  const ciphertext = await crypto.subtle.encrypt(
-    { name: ALGO, iv: new Uint8Array(iv) }, wkCrypto, rawKey
-  )
-  const result = new Uint8Array(IV_LENGTH + ciphertext.byteLength)
-  result.set(new Uint8Array(iv), 0)
-  result.set(new Uint8Array(ciphertext), IV_LENGTH)
-  return result
+async function aesGcmEncrypt(key: Uint8Array, plaintext: Uint8Array): Promise<{ iv: Uint8Array; ct: Uint8Array }> {
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
+  const cryptoKey = await crypto.subtle.importKey('raw', new Uint8Array(key), 'AES-GCM', false, ['encrypt'])
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, new Uint8Array(plaintext))
+  return { iv, ct: new Uint8Array(ct) }
 }
 
-export async function decryptKeyWithWK(
-  encryptedPayload: Uint8Array,
-  wk: Uint8Array
-): Promise<CryptoKey> {
-  const iv = encryptedPayload.slice(0, IV_LENGTH).buffer.slice(0) as ArrayBuffer
-  const ciphertext = encryptedPayload.slice(IV_LENGTH).buffer.slice(0) as ArrayBuffer
-  const wkBuf = wk.buffer.slice(0) as ArrayBuffer
-  const wkCrypto = await crypto.subtle.importKey(
-    'raw', wkBuf, { name: ALGO, length: WK_LENGTH * 8 }, false, ['decrypt']
-  )
-  const rawKey = await crypto.subtle.decrypt(
-    { name: ALGO, iv: new Uint8Array(iv) }, wkCrypto, ciphertext
-  )
-  return crypto.subtle.importKey(
-    'raw', rawKey, { name: ALGO, length: 256 }, true, ['encrypt', 'decrypt']
-  )
+async function aesGcmDecrypt(key: Uint8Array, iv: Uint8Array, ct: Uint8Array): Promise<Uint8Array> {
+  const cryptoKey = await crypto.subtle.importKey('raw', new Uint8Array(key), 'AES-GCM', false, ['decrypt'])
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(iv) }, cryptoKey, new Uint8Array(ct))
+  return new Uint8Array(pt)
 }
 
-export function wkToBase64(wk: Uint8Array): string {
-  return btoa(String.fromCharCode(...wk))
+export async function wrapAesKey(aesKey: CryptoKey, recipientPub: Uint8Array): Promise<Uint8Array> {
+  const rawKey = new Uint8Array(await crypto.subtle.exportKey('raw', aesKey))
+  const ephPriv = x25519.utils.randomSecretKey()
+  const ephPub = x25519.getPublicKey(ephPriv)
+  const shared = x25519.getSharedSecret(ephPriv, recipientPub)
+  const derived = deriveSharedKey(shared, ephPub)
+  const { iv, ct } = await aesGcmEncrypt(derived, rawKey)
+
+  const blob = new Uint8Array(1 + PUB_LENGTH + IV_LENGTH + ct.length)
+  blob[0] = VERSION
+  blob.set(ephPub, 1)
+  blob.set(iv, 1 + PUB_LENGTH)
+  blob.set(ct, 1 + PUB_LENGTH + IV_LENGTH)
+  return blob
 }
 
-export function base64ToWk(b64: string): Uint8Array {
-  const clean = b64.trim()
-  let raw: string
-  try {
-    raw = atob(clean)
-  } catch {
-    throw new Error('Invalid key format. Copy the key again from the patient.')
+export async function unwrapAesKey(blob: Uint8Array, recipientPriv: Uint8Array): Promise<CryptoKey> {
+  if (blob.length < 1 + PUB_LENGTH + IV_LENGTH || blob[0] !== VERSION) {
+    throw new Error('Unsupported encrypted key format')
   }
-  if (raw.length !== WK_LENGTH) {
-    throw new Error('Invalid key length. Copy the key again from the patient.')
-  }
-  return Uint8Array.from(raw, (c) => c.charCodeAt(0))
+  const ephPub = blob.slice(1, 1 + PUB_LENGTH)
+  const iv = blob.slice(1 + PUB_LENGTH, 1 + PUB_LENGTH + IV_LENGTH)
+  const ct = blob.slice(1 + PUB_LENGTH + IV_LENGTH)
+  const shared = x25519.getSharedSecret(recipientPriv, ephPub)
+  const derived = deriveSharedKey(shared, ephPub)
+  const rawKey = await aesGcmDecrypt(derived, iv, ct)
+  return crypto.subtle.importKey('raw', new Uint8Array(rawKey), { name: 'AES-GCM', length: 256 }, true, [
+    'encrypt',
+    'decrypt',
+  ])
 }

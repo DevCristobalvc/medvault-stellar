@@ -1,41 +1,34 @@
 import { useEffect, useState } from 'react'
-import { ShieldCheck, ShieldX, Loader2, FileText, Key } from 'lucide-react'
+import { ShieldX, Loader2, FileText, Wifi } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { verifyAccess, logAccess, getTokenInfo, getDocument, getEncryptedKey, type Document } from '@/lib/stellar'
+import { verifyAccess, logAccess, getTokenInfo, getDocument, getEncryptedKey, isTransientError, type Document } from '@/lib/stellar'
 import { downloadEncryptedPayload } from '@/lib/ipfs'
 import { decryptFile, decodePayload } from '@/lib/encryption'
-import { decryptKeyWithWK, base64ToWk } from '@/lib/ecies'
+import { unwrapAesKey } from '@/lib/ecies'
+import { loadPrivateKey } from '@/lib/doctorkey'
 import { saveDoctorRecord } from '@/lib/doctorstore'
+import { t, type Lang } from '@/lib/i18n'
 import { RecordContent } from './RecordContent'
 
 type AccessStatus =
   | { phase: 'verifying' }
   | { phase: 'invalid'; reason: string }
-  | { phase: 'needs_key'; tokenInfo: { documentId: string; patient: string } }
+  | { phase: 'network' }
   | { phase: 'decrypting' }
   | { phase: 'ready'; data: ArrayBuffer; doc: Document }
 
 interface DoctorAccessProps {
   tokenId: string
   doctorPublicKey: string
-  encryptionKey: string | null
+  lang: Lang
 }
 
-export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey }: DoctorAccessProps) {
+export function DoctorAccess({ tokenId, doctorPublicKey, lang }: DoctorAccessProps) {
   const [status, setStatus] = useState<AccessStatus>({ phase: 'verifying' })
-  const [manualKey, setManualKey] = useState('')
 
   useEffect(() => { verify() }, [tokenId, doctorPublicKey])
-
-  useEffect(() => {
-    if (status.phase === 'needs_key' && encryptionKey) {
-      decrypt(encryptionKey, status.tokenInfo)
-    }
-  }, [encryptionKey, status.phase])
 
   async function verify() {
     setStatus({ phase: 'verifying' })
@@ -43,43 +36,44 @@ export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey }: Doctor
       const tokenInfo = await getTokenInfo(tokenId)
 
       if (!tokenInfo) {
-        setStatus({ phase: 'invalid', reason: 'Access token not found or expired.' })
+        setStatus({ phase: 'invalid', reason: t('doctor', 'reason_token_not_found', lang) })
         return
       }
 
       if (tokenInfo.doctor !== doctorPublicKey) {
         setStatus({
           phase: 'invalid',
-          reason: `This token requires wallet ${tokenInfo.doctor.slice(0, 6)}…${tokenInfo.doctor.slice(-4)}. You are connected with ${doctorPublicKey.slice(0, 6)}…${doctorPublicKey.slice(-4)}.`,
+          reason: `${t('doctor', 'wrong_wallet_a', lang)} ${tokenInfo.doctor.slice(0, 6)}…${tokenInfo.doctor.slice(-4)}. ${t('doctor', 'wrong_wallet_b', lang)} ${doctorPublicKey.slice(0, 6)}…${doctorPublicKey.slice(-4)}.`,
         })
         return
       }
 
       const valid = await verifyAccess(tokenId, doctorPublicKey)
       if (!valid) {
-        setStatus({ phase: 'invalid', reason: 'Access token has expired.' })
+        setStatus({ phase: 'invalid', reason: t('doctor', 'reason_expired', lang) })
         return
       }
 
-      setStatus({ phase: 'needs_key', tokenInfo })
+      await decrypt(tokenInfo)
     } catch (e) {
-      setStatus({ phase: 'invalid', reason: e instanceof Error ? e.message : 'Verification failed.' })
+      if (isTransientError(e)) { setStatus({ phase: 'network' }); return }
+      setStatus({ phase: 'invalid', reason: e instanceof Error ? e.message : t('doctor', 'reason_verification_failed', lang) })
     }
   }
 
-  async function decrypt(wkB64: string, tokenInfo: { documentId: string; patient: string }) {
+  async function decrypt(tokenInfo: { documentId: string; patient: string }) {
     setStatus({ phase: 'decrypting' })
     try {
       const doc = await getDocument(tokenInfo.documentId)
-      if (!doc) throw new Error('Document not found on-chain')
+      if (!doc) throw new Error(t('doctor', 'reason_doc_not_found', lang))
 
       const encryptedKeyBytes = await getEncryptedKey(tokenId)
       if (!encryptedKeyBytes || encryptedKeyBytes.length === 0) {
-        throw new Error('Encrypted key not found in contract')
+        throw new Error(t('doctor', 'reason_key_not_found', lang))
       }
 
-      const wk = base64ToWk(wkB64)
-      const aesKey = await decryptKeyWithWK(encryptedKeyBytes, wk)
+      const priv = await loadPrivateKey(doctorPublicKey)
+      const aesKey = await unwrapAesKey(encryptedKeyBytes, priv)
 
       const payload = await downloadEncryptedPayload(doc.cid)
       const { ciphertext, iv } = decodePayload(payload)
@@ -95,12 +89,12 @@ export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey }: Doctor
         patientAddress: tokenInfo.patient,
         createdAt: doc.createdAt,
         accessedAt: Math.floor(Date.now() / 1000),
-        encryptionKey: wkB64,
       })
 
       setStatus({ phase: 'ready', data: plaintext, doc })
     } catch (e) {
-      setStatus({ phase: 'invalid', reason: e instanceof Error ? e.message : 'Decryption failed.' })
+      if (isTransientError(e)) { setStatus({ phase: 'network' }); return }
+      setStatus({ phase: 'invalid', reason: e instanceof Error ? e.message : t('doctor', 'reason_decryption_failed', lang) })
     }
   }
 
@@ -109,10 +103,25 @@ export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey }: Doctor
       <div className="flex flex-col items-center gap-3 px-5 py-10">
         <Loader2 className="h-7 w-7 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground">
-          {status.phase === 'verifying' ? 'Verifying on Stellar...' : 'Decrypting record...'}
+          {status.phase === 'verifying' ? t('doctor', 'verifying', lang) : t('doctor', 'decrypting', lang)}
         </p>
         <Skeleton className="h-3 w-40 mt-1" />
         <Skeleton className="h-3 w-28" />
+      </div>
+    )
+  }
+
+  if (status.phase === 'network') {
+    return (
+      <div className="flex flex-col items-center gap-3 px-5 py-10 text-center">
+        <div className="rounded-full bg-accent/10 p-3">
+          <Wifi className="h-6 w-6 text-accent-foreground" />
+        </div>
+        <p className="font-medium text-sm">{t('doctor', 'network_title', lang)}</p>
+        <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
+          {t('doctor', 'network_desc', lang)}
+        </p>
+        <Button variant="outline" size="sm" onClick={verify}>{t('doctor', 'try_again', lang)}</Button>
       </div>
     )
   }
@@ -123,51 +132,9 @@ export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey }: Doctor
         <div className="rounded-full bg-destructive/8 p-3">
           <ShieldX className="h-6 w-6 text-destructive" />
         </div>
-        <p className="font-medium text-sm">Access denied</p>
+        <p className="font-medium text-sm">{t('doctor', 'denied_title', lang)}</p>
         <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">{status.reason}</p>
-        <Button variant="outline" size="sm" onClick={verify}>Retry</Button>
-      </div>
-    )
-  }
-
-  if (status.phase === 'needs_key') {
-    const tokenInfo = status.tokenInfo
-    return (
-      <div className="flex flex-col gap-4 px-4 py-5">
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-100">
-          <ShieldCheck className="h-5 w-5 text-green-600 shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-green-800">Access verified</p>
-            <p className="text-xs text-green-600 mt-0.5">Waiting for encryption key</p>
-          </div>
-          <Badge className="ml-auto bg-accent/20 text-accent-foreground border border-accent/30 text-xs shrink-0">
-            Valid
-          </Badge>
-        </div>
-
-        <div className="rounded-lg border border-border p-3 flex flex-col gap-2.5">
-          <Label htmlFor="key" className="flex items-center gap-1.5 text-xs font-medium">
-            <Key className="h-3.5 w-3.5 text-muted-foreground" />
-            Encryption key
-          </Label>
-          <p className="text-xs text-muted-foreground">
-            Paste the key shared by the patient (if not in the QR)
-          </p>
-          <Input
-            id="key"
-            value={manualKey}
-            onChange={(e) => setManualKey(e.target.value)}
-            placeholder="Base64 key..."
-            className="font-mono text-xs h-8"
-          />
-          <Button
-            size="sm"
-            disabled={!manualKey.trim()}
-            onClick={() => decrypt(manualKey.trim(), tokenInfo)}
-          >
-            Decrypt record
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={verify}>{t('doctor', 'retry', lang)}</Button>
       </div>
     )
   }
@@ -187,19 +154,19 @@ export function DoctorAccess({ tokenId, doctorPublicKey, encryptionKey }: Doctor
           </p>
         </div>
         <Badge className="bg-green-50 text-green-700 border border-green-200 text-xs shrink-0">
-          Verified
+          {t('doctor', 'verified', lang)}
         </Badge>
       </div>
 
       <div className="rounded-lg border border-border bg-muted/20 p-3">
         <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
-          Clinical Record
+          {t('doctor', 'clinical_record', lang)}
         </p>
         <RecordContent data={status.data} docType={status.doc.docType} />
       </div>
 
       <p className="text-[10px] text-muted-foreground text-center py-0.5">
-        Clinical content stays in memory | never written to this device.
+        {t('doctor', 'in_memory', lang)}
       </p>
     </div>
   )

@@ -15,10 +15,12 @@ import { t, type Lang } from '@/lib/i18n'
 
 interface HackathonPageProps { lang: Lang }
 
-const CONTRACT_ID = 'CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK'
+const CONTRACT_ID = 'CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3'
+const PREV_CONTRACT_ID = 'CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK'
 const REPO_URL = 'https://github.com/DevCristobalvc/medvault-stellar'
 const DEMO_URL = 'https://medvault-stellar.vercel.app'
 const EXPLORER_URL = `https://stellar.expert/explorer/testnet/contract/${CONTRACT_ID}`
+const PREV_EXPLORER_URL = `https://stellar.expert/explorer/testnet/contract/${PREV_CONTRACT_ID}`
 
 // Paste the submission links here (YouTube / Drive / PDF). Empty = "Coming soon".
 const DECK_URL = '/deck.pdf'
@@ -121,8 +123,9 @@ function VideoCard({ icon: Icon, title, desc, url, pending }: {
   )
 }
 
-function ResourceCard({ icon: Icon, title, desc, url, label, pending }: {
+function ResourceCard({ icon: Icon, title, desc, url, label, pending, secondaryUrl, secondaryLabel }: {
   icon: React.ElementType; title: string; desc: string; url: string; label: string; pending: string
+  secondaryUrl?: string; secondaryLabel?: string
 }) {
   return (
     <Card className="shadow-none">
@@ -135,15 +138,28 @@ function ResourceCard({ icon: Icon, title, desc, url, label, pending }: {
       <CardContent>
         <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{desc}</p>
         {url ? (
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
-          >
-            {label}
-            <ExternalLink className="h-3 w-3" />
-          </a>
+          <div className="flex flex-col gap-1.5">
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
+            >
+              {label}
+              <ExternalLink className="h-3 w-3" />
+            </a>
+            {secondaryUrl && secondaryLabel && (
+              <a
+                href={secondaryUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:underline"
+              >
+                {secondaryLabel}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
         ) : (
           <Badge variant="outline" className="text-xs text-muted-foreground">{pending}</Badge>
         )}
@@ -171,7 +187,7 @@ const SOLUTIONS = [
 ] as const
 
 const EVALUATION_CRITERIA = [
-  { label: 'Integration depth & technical complexity', status: 'done', note: 'Soroban contract: 12 functions, 20 tests, require_auth enforcement, real Groth16 / BLS12-381 verifier (CAP-0052)' },
+  { label: 'Integration depth & technical complexity', status: 'done', note: 'Soroban contract: 14 functions, 22 tests, require_auth enforcement, on-chain pubkey registry + ECIES (X25519), real Groth16 / BLS12-381 verifier (CAP-0052)' },
   { label: 'Impact on the Stellar ecosystem', status: 'done', note: 'Open Blockchain-as-a-Service protocol for medical data in LATAM' },
   { label: 'Customer discovery & validation', status: 'pending', note: '3 recorded interviews | see Demo & Interviews above' },
   { label: 'Quality of testnet deployment', status: 'done', note: `Live on Stellar Testnet · ${CONTRACT_ID.slice(0, 12)}…` },
@@ -380,9 +396,11 @@ export function HackathonPage({ lang }: HackathonPageProps) {
             <ResourceCard
               icon={ExternalLink}
               title={t('hackathon', 'contract', lang)}
-              desc={`Contract ${CONTRACT_ID.slice(0, 20)}… deployed on Stellar Testnet.`}
+              desc={`v0.5 · ECIES — ${CONTRACT_ID.slice(0, 20)}… deployed on Stellar Testnet.`}
               url={EXPLORER_URL}
               label="View on Stellar Expert"
+              secondaryUrl={PREV_EXPLORER_URL}
+              secondaryLabel={lang === 'es' ? 'Ver contrato versión anterior (v0.4)' : lang === 'pt' ? 'Ver contrato anterior (v0.4)' : 'View previous contract (v0.4)'}
               pending={pending}
             />
             <ResourceCard

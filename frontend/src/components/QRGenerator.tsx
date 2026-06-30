@@ -1,14 +1,15 @@
 import { useEffect, useState, useRef } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
-import { Download, Clock, Copy, Check, ExternalLink, Key } from 'lucide-react'
+import { Download, Clock, Copy, Check, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { t, type Lang } from '@/lib/i18n'
 
 interface QRGeneratorProps {
   tokenId: string
   expiresAt: number
-  encryptionKey?: string | null
   baseUrl?: string
+  lang: Lang
 }
 
 function useCountdown(expiresAt: number) {
@@ -24,25 +25,21 @@ function useCountdown(expiresAt: number) {
   return remaining
 }
 
-function formatRemaining(seconds: number) {
-  if (seconds <= 0) return 'Expired'
+function formatRemaining(seconds: number, lang: Lang) {
+  if (seconds <= 0) return t('patient', 'qr_expired', lang)
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
   const s = seconds % 60
   return [h, m, s].map((n) => String(n).padStart(2, '0')).join(':')
 }
 
-export function QRGenerator({ tokenId, expiresAt, encryptionKey, baseUrl }: QRGeneratorProps) {
+export function QRGenerator({ tokenId, expiresAt, baseUrl, lang }: QRGeneratorProps) {
   const remaining = useCountdown(expiresAt)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [copied, setCopied] = useState(false)
-  const [keyCopied, setKeyCopied] = useState(false)
   const expired = remaining <= 0
 
-  const base = `${baseUrl ?? window.location.origin}/doctor?token=${tokenId}`
-  const url = encryptionKey
-    ? `${base}#wk=${encodeURIComponent(encryptionKey)}`
-    : base
+  const url = `${baseUrl ?? window.location.origin}/doctor?token=${tokenId}`
 
   function download() {
     const canvas = document.querySelector<HTMLCanvasElement>('#qr-canvas canvas')
@@ -58,14 +55,6 @@ export function QRGenerator({ tokenId, expiresAt, encryptionKey, baseUrl }: QRGe
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
-
-  async function copyKey() {
-    if (!encryptionKey) return
-    await navigator.clipboard.writeText(encryptionKey)
-    setKeyCopied(true)
-    setTimeout(() => setKeyCopied(false), 2000)
-  }
-
 
   return (
     <Card className="w-full max-w-xs mx-auto">
@@ -87,7 +76,7 @@ export function QRGenerator({ tokenId, expiresAt, encryptionKey, baseUrl }: QRGe
         <div className="flex items-center gap-1.5 text-sm">
           <Clock className={`h-4 w-4 ${remaining < 3600 ? 'text-amber-500' : 'text-muted-foreground'}`} />
           <span className={`font-mono font-medium ${expired ? 'text-destructive' : remaining < 3600 ? 'text-amber-500' : 'text-foreground'}`}>
-            {formatRemaining(remaining)}
+            {formatRemaining(remaining, lang)}
           </span>
         </div>
 
@@ -100,24 +89,18 @@ export function QRGenerator({ tokenId, expiresAt, encryptionKey, baseUrl }: QRGe
               className="inline-flex items-center justify-center gap-1.5 w-full h-8 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
             >
               <ExternalLink className="h-3.5 w-3.5" />
-              Open in browser
+              {t('patient', 'open_browser', lang)}
             </a>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={copyLink}>
                 {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? 'Copied!' : 'Copy link'}
+                {copied ? t('patient', 'copied', lang) : t('patient', 'copy_link', lang)}
               </Button>
               <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={download}>
                 <Download className="h-3.5 w-3.5" />
-                Save QR
+                {t('patient', 'save_qr', lang)}
               </Button>
             </div>
-            {encryptionKey && (
-              <Button variant="ghost" size="sm" className="w-full gap-1.5" onClick={copyKey}>
-                {keyCopied ? <Check className="h-3.5 w-3.5" /> : <Key className="h-3.5 w-3.5" />}
-                {keyCopied ? 'Key copied!' : 'Copy key only'}
-              </Button>
-            )}
           </div>
         )}
       </CardContent>

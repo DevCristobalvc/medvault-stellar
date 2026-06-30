@@ -12,7 +12,7 @@ import {
 import { getKitAddress, signTx } from '@/lib/walletKit'
 
 const RPC_URL = import.meta.env.VITE_SOROBAN_RPC?.trim() || 'https://soroban-testnet.stellar.org'
-const CONTRACT_ID = import.meta.env.VITE_CONTRACT_ID?.trim() || 'CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK'
+const CONTRACT_ID = import.meta.env.VITE_CONTRACT_ID?.trim() || 'CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3'
 const NETWORK_PASSPHRASE = Networks.TESTNET
 
 export interface Document {
@@ -27,6 +27,21 @@ export interface AccessEvent {
   doctor: string
   tokenId: string
   accessedAt: number
+}
+
+export class TransactionError extends Error {
+  transient: boolean
+  status: string
+  constructor(message: string, opts: { transient: boolean; status: string }) {
+    super(message)
+    this.name = 'TransactionError'
+    this.transient = opts.transient
+    this.status = opts.status
+  }
+}
+
+export function isTransientError(e: unknown): boolean {
+  return e instanceof TransactionError && e.transient
 }
 
 function server() {
@@ -80,7 +95,18 @@ async function buildAndSubmit(
   const signedTx = TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE)
   const result = await s.sendTransaction(signedTx)
 
-  if (result.status === 'ERROR') throw new Error(`Transaction failed`)
+  if (result.status === 'TRY_AGAIN_LATER') {
+    throw new TransactionError('The network is congested. Please try again.', {
+      transient: true,
+      status: result.status,
+    })
+  }
+  if (result.status === 'ERROR') {
+    throw new TransactionError('Transaction submission failed.', {
+      transient: false,
+      status: result.status,
+    })
+  }
 
   let getResult = await s.getTransaction(result.hash)
   let attempts = 0
@@ -93,11 +119,17 @@ async function buildAndSubmit(
   if (getResult.status === 'FAILED') {
     const failed = getResult as SorobanRpc.Api.GetFailedTransactionResponse
     const xdrB64 = failed.resultXdr?.toXDR('base64') ?? 'unknown'
-    throw new Error(`Transaction FAILED on-chain. ResultXDR: ${xdrB64}`)
+    throw new TransactionError(`Transaction FAILED on-chain. ResultXDR: ${xdrB64}`, {
+      transient: false,
+      status: getResult.status,
+    })
   }
 
   if (getResult.status !== 'SUCCESS') {
-    throw new Error(`Transaction did not succeed: ${getResult.status}`)
+    throw new TransactionError('The network is slow to confirm. Please try again.', {
+      transient: true,
+      status: getResult.status,
+    })
   }
 
   return (getResult as SorobanRpc.Api.GetSuccessfulTransactionResponse).returnValue!
@@ -136,6 +168,21 @@ async function readOnly(method: string, args: xdr.ScVal[]): Promise<xdr.ScVal> {
 
 export async function getWalletPublicKey(): Promise<string> {
   return getPublicKey()
+}
+
+export async function registerPubkey(pubkey: Uint8Array): Promise<void> {
+  const owner = await getPublicKey()
+  await buildAndSubmit(
+    'register_pubkey',
+    [new Address(owner).toScVal(), scBytes(pubkey)],
+    owner
+  )
+}
+
+export async function getPubkey(ownerAddress: string): Promise<Uint8Array | null> {
+  const retval = await readOnly('get_pubkey', [new Address(ownerAddress).toScVal()])
+  const raw = scValToNative(retval) as Uint8Array | null
+  return raw ? new Uint8Array(raw) : null
 }
 
 export async function registerDocument(

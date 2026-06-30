@@ -36,7 +36,7 @@ beforeEach(() => {
 describe('DocumentUpload', () => {
   it('blocks submit without a patient address', async () => {
     const user = userEvent.setup()
-    render(<DocumentUpload />)
+    render(<DocumentUpload lang="en" />)
     await user.click(screen.getByRole('button', { name: /Encrypt & Upload/i }))
     expect(screen.getByText(/Enter the patient Stellar address/i)).toBeInTheDocument()
     expect(registerDocument).not.toHaveBeenCalled()
@@ -44,7 +44,7 @@ describe('DocumentUpload', () => {
 
   it('blocks submit with empty clinical content', async () => {
     const user = userEvent.setup()
-    render(<DocumentUpload />)
+    render(<DocumentUpload lang="en" />)
     await user.type(screen.getByPlaceholderText('G...'), PATIENT)
     await user.click(screen.getByRole('button', { name: /Encrypt & Upload/i }))
     expect(screen.getByText(/Write the clinical content/i)).toBeInTheDocument()
@@ -53,7 +53,7 @@ describe('DocumentUpload', () => {
 
   it('runs encrypt → upload → register on a valid submit', async () => {
     const user = userEvent.setup()
-    render(<DocumentUpload />)
+    render(<DocumentUpload lang="en" />)
     await user.type(screen.getByPlaceholderText('G...'), PATIENT)
     await user.type(screen.getByPlaceholderText(/Write the clinical record/i), 'Blood test normal')
     await user.click(screen.getByRole('button', { name: /Encrypt & Upload/i }))
@@ -67,7 +67,7 @@ describe('DocumentUpload', () => {
 
   it('derives docType from the file name when uploading a file', async () => {
     const user = userEvent.setup()
-    const { container } = render(<DocumentUpload />)
+    const { container } = render(<DocumentUpload lang="en" />)
     await user.type(screen.getByPlaceholderText('G...'), PATIENT)
     await user.click(screen.getByRole('button', { name: /Upload file/i }))
 
@@ -81,7 +81,7 @@ describe('DocumentUpload', () => {
 
   it('keeps a manually entered docType when a file is selected', async () => {
     const user = userEvent.setup()
-    const { container } = render(<DocumentUpload />)
+    const { container } = render(<DocumentUpload lang="en" />)
     await user.type(screen.getByPlaceholderText('G...'), PATIENT)
 
     const docTypeInput = screen.getByPlaceholderText('clinical_history')

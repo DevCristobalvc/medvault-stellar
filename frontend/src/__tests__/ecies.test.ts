@@ -1,63 +1,62 @@
 import { describe, it, expect } from 'vitest'
-import {
-  generateWrappingKey,
-  encryptKeyWithWK,
-  decryptKeyWithWK,
-  wkToBase64,
-  base64ToWk,
-} from '../lib/ecies'
+import { x25519 } from '@noble/curves/ed25519.js'
+import { wrapAesKey, unwrapAesKey } from '../lib/ecies'
 import { generateKey } from '../lib/encryption'
 
-describe('ecies (wrapping key KEM)', () => {
-  it('generates 32-byte wrapping key', () => {
-    const wk = generateWrappingKey()
-    expect(wk).toHaveLength(32)
-  })
+function recipient() {
+  const priv = x25519.utils.randomSecretKey()
+  const pub = x25519.getPublicKey(priv)
+  return { priv, pub }
+}
 
-  it('two wrapping keys are different', () => {
-    const wk1 = generateWrappingKey()
-    const wk2 = generateWrappingKey()
-    expect(wk1).not.toEqual(wk2)
-  })
-
-  it('encryptKeyWithWK → decryptKeyWithWK round-trip', async () => {
+describe('ecies (X25519 ECDH + HKDF + AES-GCM)', () => {
+  it('wrapAesKey → unwrapAesKey round-trip', async () => {
     const aesKey = await generateKey()
-    const wk = generateWrappingKey()
+    const { priv, pub } = recipient()
 
-    const encrypted = await encryptKeyWithWK(aesKey, wk)
-    const recovered = await decryptKeyWithWK(encrypted, wk)
+    const blob = await wrapAesKey(aesKey, pub)
+    const recovered = await unwrapAesKey(blob, priv)
 
     const raw1 = await crypto.subtle.exportKey('raw', aesKey)
     const raw2 = await crypto.subtle.exportKey('raw', recovered)
     expect(new Uint8Array(raw1)).toEqual(new Uint8Array(raw2))
   })
 
-  it('encrypted payload is 60 bytes (12 IV + 48 ciphertext)', async () => {
+  it('blob starts with version byte 0x03', async () => {
     const aesKey = await generateKey()
-    const wk = generateWrappingKey()
-    const encrypted = await encryptKeyWithWK(aesKey, wk)
-    expect(encrypted.byteLength).toBe(60)
+    const { pub } = recipient()
+    const blob = await wrapAesKey(aesKey, pub)
+    expect(blob[0]).toBe(0x03)
   })
 
-  it('wrong wrapping key fails decryption', async () => {
+  it('blob is 93 bytes (1 version + 32 ephPub + 12 iv + 48 ciphertext)', async () => {
     const aesKey = await generateKey()
-    const wk = generateWrappingKey()
-    const wrongWk = generateWrappingKey()
-
-    const encrypted = await encryptKeyWithWK(aesKey, wk)
-    await expect(decryptKeyWithWK(encrypted, wrongWk)).rejects.toThrow()
+    const { pub } = recipient()
+    const blob = await wrapAesKey(aesKey, pub)
+    expect(blob.byteLength).toBe(93)
   })
 
-  it('wkToBase64 / base64ToWk round-trip', () => {
-    const wk = generateWrappingKey()
-    const b64 = wkToBase64(wk)
-    const recovered = base64ToWk(b64)
-    expect(recovered).toEqual(wk)
+  it('two wraps of the same key produce different blobs (ephemeral key)', async () => {
+    const aesKey = await generateKey()
+    const { pub } = recipient()
+    const a = await wrapAesKey(aesKey, pub)
+    const b = await wrapAesKey(aesKey, pub)
+    expect(a).not.toEqual(b)
   })
 
-  it('base64 of 32 bytes is 44 chars', () => {
-    const wk = generateWrappingKey()
-    const b64 = wkToBase64(wk)
-    expect(b64.length).toBe(44)
+  it('wrong private key fails to unwrap', async () => {
+    const aesKey = await generateKey()
+    const { pub } = recipient()
+    const other = recipient()
+    const blob = await wrapAesKey(aesKey, pub)
+    await expect(unwrapAesKey(blob, other.priv)).rejects.toThrow()
+  })
+
+  it('rejects an unknown version byte', async () => {
+    const aesKey = await generateKey()
+    const { priv, pub } = recipient()
+    const blob = await wrapAesKey(aesKey, pub)
+    blob[0] = 0x02
+    await expect(unwrapAesKey(blob, priv)).rejects.toThrow(/Unsupported/)
   })
 })

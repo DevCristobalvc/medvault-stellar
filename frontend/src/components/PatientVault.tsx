@@ -9,26 +9,28 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { useDocuments } from '@/hooks/useDocuments'
-import { getAuditLog, grantAccess, revokeAccess, type AccessEvent } from '@/lib/stellar'
+import { getAuditLog, grantAccess, revokeAccess, getPubkey, isTransientError, type AccessEvent } from '@/lib/stellar'
 import { deriveDocumentKey } from '@/lib/keystore'
 import { downloadEncryptedPayload } from '@/lib/ipfs'
 import { decodePayload, importKey } from '@/lib/encryption'
 import { getStoredDocumentKey } from '@/lib/dockeys'
 import { saveActiveToken, getActiveTokens, removeToken, type ActiveToken } from '@/lib/tokenstore'
-import { generateWrappingKey, encryptKeyWithWK, wkToBase64 } from '@/lib/ecies'
+import { wrapAesKey } from '@/lib/ecies'
+import { cn } from '@/lib/utils'
+import { t, type Lang } from '@/lib/i18n'
 import { QRGenerator } from './QRGenerator'
 
 const DURATION_OPTIONS = [
-  { label: '1 hour', seconds: 3600 },
-  { label: '24 hours', seconds: 86400 },
-  { label: '7 days', seconds: 604800 },
-]
+  { key: 'dur_1h', seconds: 3600 },
+  { key: 'dur_24h', seconds: 86400 },
+  { key: 'dur_7d', seconds: 604800 },
+] as const
 
-interface PatientVaultProps { publicKey: string }
+interface PatientVaultProps { publicKey: string; lang: Lang }
 
 type DocItem = { id: string; cid: string; docType: string; createdAt: number; doctor: string }
 
-function DocumentCard({ doc }: { doc: DocItem }) {
+function DocumentCard({ doc, lang }: { doc: DocItem; lang: Lang }) {
   const date = new Date(doc.createdAt * 1000).toLocaleDateString()
   return (
     <div className="flex items-center gap-3 py-3 px-3.5 rounded-lg border border-border bg-card w-full text-left cursor-pointer hover:bg-muted/30 transition-colors">
@@ -43,19 +45,20 @@ function DocumentCard({ doc }: { doc: DocItem }) {
       </div>
       <div className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/5 border border-primary/15 rounded-md px-2 py-1">
         <QrCode className="h-3 w-3" />
-        Share
+        {t('patient', 'share', lang)}
       </div>
     </div>
   )
 }
 
 function ActiveTokenCard({
-  token, onRevoke, onViewQR, revoking,
+  token, onRevoke, onViewQR, revoking, lang,
 }: {
   token: ActiveToken
   onRevoke: (tokenId: string) => void
   onViewQR: (token: ActiveToken) => void
   revoking: boolean
+  lang: Lang
 }) {
   const expiresIn = token.expiresAt - Math.floor(Date.now() / 1000)
   const h = Math.floor(expiresIn / 3600)
@@ -72,7 +75,7 @@ function ActiveTokenCard({
         <div className="flex items-center gap-1.5 mt-0.5">
           <Clock className={`h-3 w-3 ${urgent ? 'text-amber-500' : 'text-muted-foreground'}`} />
           <span className={`text-xs ${urgent ? 'text-amber-500' : 'text-muted-foreground'}`}>
-            expires in {label}
+            {t('patient', 'expires_in', lang)} {label}
           </span>
         </div>
       </div>
@@ -83,14 +86,14 @@ function ActiveTokenCard({
         </Button>
         <Button variant="ghost" size="sm" disabled={revoking} onClick={() => onRevoke(token.tokenId)}
           className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2 text-xs">
-          <ShieldX className="h-3.5 w-3.5 mr-1" />Revoke
+          <ShieldX className="h-3.5 w-3.5 mr-1" />{t('patient', 'revoke', lang)}
         </Button>
       </div>
     </div>
   )
 }
 
-function AuditEntry({ event }: { event: AccessEvent }) {
+function AuditEntry({ event, lang }: { event: AccessEvent; lang: Lang }) {
   const date = new Date(event.accessedAt * 1000).toLocaleString()
   return (
     <div className="flex justify-between items-start py-2.5 gap-3">
@@ -100,7 +103,7 @@ function AuditEntry({ event }: { event: AccessEvent }) {
         </p>
         <p className="text-xs text-muted-foreground mt-0.5">{date}</p>
       </div>
-      <Badge variant="outline" className="text-xs shrink-0">read</Badge>
+      <Badge variant="outline" className="text-xs shrink-0">{t('patient', 'read', lang)}</Badge>
     </div>
   )
 }
@@ -115,9 +118,10 @@ interface GrantState {
   expiresAt: number
   step: GrantStep
   error: string | null
+  transient?: boolean
 }
 
-export function PatientVault({ publicKey }: PatientVaultProps) {
+export function PatientVault({ publicKey, lang }: PatientVaultProps) {
   const { documents, loading, error, reload } = useDocuments(publicKey)
   const [auditLog, setAuditLog] = useState<AccessEvent[]>([])
   const [auditLoading, setAuditLoading] = useState(false)
@@ -140,7 +144,7 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
     setGrantState({
       docId: token.documentId,
       doctorAddress: token.doctorAddress,
-      encryptionKey: token.wrappingKey ?? null,
+      encryptionKey: null,
       tokenId: token.tokenId,
       expiresAt: token.expiresAt,
       step: 'done',
@@ -159,6 +163,10 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
     const expiresAt = Math.floor(Date.now() / 1000) + durationSeconds
     setGrantState((s) => s && { ...s, step: 'loading', expiresAt })
     try {
+      const doctorPub = await getPubkey(grantState.doctorAddress)
+      if (!doctorPub) {
+        throw new Error(t('patient', 'doctor_not_enabled', lang))
+      }
       const stored = getStoredDocumentKey(selectedDoc.cid)
       let aesKey: CryptoKey
       if (stored) {
@@ -168,9 +176,7 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
         const { salt } = decodePayload(payload)
         aesKey = await deriveDocumentKey(salt)
       }
-      const wk = generateWrappingKey()
-      const encryptedKeyBytes = await encryptKeyWithWK(aesKey, wk)
-      const wrappingKeyB64 = wkToBase64(wk)
+      const encryptedKeyBytes = await wrapAesKey(aesKey, doctorPub)
 
       const tokenId = await grantAccess(
         grantState.doctorAddress,
@@ -184,17 +190,25 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
         documentId: grantState.docId,
         doctorAddress: grantState.doctorAddress,
         expiresAt,
-        wrappingKey: wrappingKeyB64,
       })
       setActiveTokens(getActiveTokens(grantState.docId))
       setGrantState((s) => s && {
         ...s,
         tokenId,
-        encryptionKey: wrappingKeyB64,
+        encryptionKey: null,
         step: 'done',
       })
     } catch (e) {
-      setGrantState((s) => s && { ...s, step: 'error', error: e instanceof Error ? e.message : 'Failed' })
+      if (isTransientError(e)) {
+        setGrantState((s) => s && {
+          ...s,
+          step: 'error',
+          transient: true,
+          error: t('patient', 'net_busy_grant', lang),
+        })
+        return
+      }
+      setGrantState((s) => s && { ...s, step: 'error', transient: false, error: e instanceof Error ? e.message : t('patient', 'grant_failed', lang) })
     }
   }
 
@@ -233,9 +247,9 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
     <div className="flex flex-col gap-6 px-5 py-6 md:px-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">My Vault</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{t('patient', 'my_vault', lang)}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {loading ? '...' : `${documents.length} document${documents.length !== 1 ? 's' : ''}`}
+            {loading ? '...' : `${documents.length} ${t('patient', documents.length !== 1 ? 'doc_plural' : 'doc_singular', lang)}`}
           </p>
         </div>
         <Button variant="ghost" size="icon" onClick={reload} disabled={loading}>
@@ -253,13 +267,13 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
             <Card className="shadow-none border-dashed">
               <CardContent className="flex flex-col items-center gap-2 py-10">
                 <ShieldCheck className="h-8 w-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">No documents yet</p>
+                <p className="text-sm text-muted-foreground">{t('patient', 'no_documents', lang)}</p>
               </CardContent>
             </Card>
           )
           : documents.map((doc) => (
             <button key={doc.id} className="w-full text-left" onClick={() => openGrant(doc)}>
-              <DocumentCard doc={doc} />
+              <DocumentCard doc={doc} lang={lang} />
             </button>
           ))}
       </div>
@@ -277,7 +291,7 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
                 <p className="text-xs font-medium text-amber-700 flex items-center gap-1.5 mb-1">
                   <AlertTriangle className="h-3.5 w-3.5" />
-                  Active accesses ({activeTokens.length})
+                  {t('patient', 'active_accesses', lang)} ({activeTokens.length})
                 </p>
                 <div className="divide-y divide-amber-100">
                   {activeTokens.map((t) => (
@@ -287,6 +301,7 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
                       onRevoke={handleRevoke}
                       onViewQR={showExistingTokenQR}
                       revoking={revokingId === t.tokenId}
+                      lang={lang}
                     />
                   ))}
                 </div>
@@ -295,7 +310,7 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
 
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-                Grant new access
+                {t('patient', 'grant_new', lang)}
               </p>
 
               {grantState?.step === 'address' && (
@@ -303,7 +318,7 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
                   <div className="space-y-1.5">
                     <Label htmlFor="doctor-addr" className="flex items-center gap-1.5 text-sm">
                       <UserCheck className="h-3.5 w-3.5" />
-                      Doctor&apos;s Stellar address
+                      {t('patient', 'doctor_addr', lang)}
                     </Label>
                     <Input
                       id="doctor-addr"
@@ -314,14 +329,14 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
                       autoComplete="off"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Only this wallet will be able to decrypt the record.
+                      {t('patient', 'doctor_addr_help', lang)}
                     </p>
                   </div>
                   <Button
                     onClick={confirmDoctor}
                     disabled={!doctorInput.trim().startsWith('G') || doctorInput.trim().length < 56}
                   >
-                    Continue
+                    {t('patient', 'continue', lang)}
                   </Button>
                 </div>
               )}
@@ -329,13 +344,13 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
               {grantState?.step === 'duration' && (
                 <div className="flex flex-col gap-2.5">
                   <div className="rounded-lg bg-muted/40 border border-border px-3 py-2">
-                    <p className="text-xs text-muted-foreground">Doctor wallet</p>
+                    <p className="text-xs text-muted-foreground">{t('patient', 'doctor_wallet', lang)}</p>
                     <p className="font-mono text-xs truncate" title={grantState.doctorAddress}>
                       {grantState.doctorAddress.slice(0, 8)}...{grantState.doctorAddress.slice(-6)}
                     </p>
                   </div>
                   <Label className="text-muted-foreground text-xs uppercase tracking-wide">
-                    Access duration
+                    {t('patient', 'access_duration', lang)}
                   </Label>
                   {DURATION_OPTIONS.map((opt) => (
                     <Button
@@ -346,7 +361,7 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
                     >
                       <span className="flex items-center gap-2">
                         <Clock className="h-4 w-4" />
-                        {opt.label}
+                        {t('patient', opt.key, lang)}
                       </span>
                       <span className="text-muted-foreground text-xs">→</span>
                     </Button>
@@ -362,14 +377,23 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
               )}
 
               {grantState?.step === 'error' && (
-                <p className="text-sm text-destructive py-2">{grantState.error}</p>
+                <div className="flex flex-col items-start gap-2 py-2">
+                  <p className={cn('text-sm', grantState.transient ? 'text-muted-foreground' : 'text-destructive')}>
+                    {grantState.error}
+                  </p>
+                  {grantState.transient && (
+                    <Button variant="outline" size="sm" onClick={() => handleGrantAccess(Math.max(60, grantState.expiresAt - Math.floor(Date.now() / 1000)))}>
+                      {t('patient', 'try_again', lang)}
+                    </Button>
+                  )}
+                </div>
               )}
 
               {grantState?.step === 'done' && grantState.tokenId && (
                 <QRGenerator
                   tokenId={grantState.tokenId}
                   expiresAt={grantState.expiresAt}
-                  encryptionKey={grantState.encryptionKey}
+                  lang={lang}
                 />
               )}
             </div>
@@ -381,15 +405,15 @@ export function PatientVault({ publicKey }: PatientVaultProps) {
 
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold">Access Log</h2>
+          <h2 className="text-sm font-semibold">{t('patient', 'access_log', lang)}</h2>
           <Button variant="ghost" size="sm" onClick={loadAudit} disabled={auditLoading}>
-            {auditLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : 'Load'}
+            {auditLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : t('patient', 'load', lang)}
           </Button>
         </div>
         {auditLog.length === 0 && !auditLoading
-          ? <p className="text-xs text-muted-foreground">No accesses recorded yet</p>
+          ? <p className="text-xs text-muted-foreground">{t('patient', 'no_accesses', lang)}</p>
           : <div className="flex flex-col divide-y divide-border">
-              {auditLog.map((e, i) => <AuditEntry key={i} event={e} />)}
+              {auditLog.map((e, i) => <AuditEntry key={i} event={e} lang={lang} />)}
             </div>
         }
       </div>

@@ -2,8 +2,9 @@ import { useWallet } from '@/contexts/WalletContext'
 import { PatientVault } from '@/components/PatientVault'
 import { WalletConnect } from '@/components/WalletConnect'
 import { ShieldCheck } from 'lucide-react'
+import { t, type Lang } from '@/lib/i18n'
 
-export function PatientPage() {
+export function PatientPage({ lang }: { lang: Lang }) {
   const { state } = useWallet()
 
   if (state.status !== 'connected') {
@@ -13,15 +14,15 @@ export function PatientPage() {
           <ShieldCheck className="h-8 w-8 text-primary" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold">Connect your wallet</h2>
+          <h2 className="text-lg font-semibold">{t('patient', 'connect_title', lang)}</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Connect your Stellar wallet to access your medical vault
+            {t('patient', 'connect_sub', lang)}
           </p>
         </div>
-        <WalletConnect />
+        <WalletConnect lang={lang} />
       </div>
     )
   }
 
-  return <PatientVault publicKey={state.publicKey} />
+  return <PatientVault publicKey={state.publicKey} lang={lang} />
 }

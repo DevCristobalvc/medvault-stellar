@@ -25,7 +25,7 @@ const BOTTOM_NAV = [
   { to: '/doctor',    icon: Stethoscope,  key: 'doctor',    exact: false },
 ]
 
-const APP_VERSION = 'v0.4.5'
+const APP_VERSION = 'v0.5.0'
 
 const HEADER_NAV = [
   { to: '/',          key: 'home',       exact: true },
@@ -70,7 +70,7 @@ function Header({ lang, setLang }: { lang: ReturnType<typeof useLanguage>['lang'
 
         <div className="flex items-center gap-2">
           <LanguageSelector lang={lang} onChange={setLang} />
-          <WalletConnect />
+          <WalletConnect lang={lang} />
         </div>
       </div>
     </header>
@@ -115,9 +115,9 @@ function AnimatedRoutes({ lang }: { lang: ReturnType<typeof useLanguage>['lang']
           <Routes location={location}>
             <Route path="/"          element={<Home lang={lang} />} />
             <Route path="/protocol"  element={<ProtocolPage lang={lang} />} />
-            <Route path="/patient"   element={<PatientPage />} />
-            <Route path="/doctor"    element={<DoctorPage />} />
-            <Route path="/doctor/upload" element={<DoctorPage />} />
+            <Route path="/patient"   element={<PatientPage lang={lang} />} />
+            <Route path="/doctor"    element={<DoctorPage lang={lang} />} />
+            <Route path="/doctor/upload" element={<DoctorPage lang={lang} />} />
             <Route path="/hackathon" element={<HackathonPage lang={lang} />} />
             <Route path="/deck"      element={<DeckPage />} />
           </Routes>

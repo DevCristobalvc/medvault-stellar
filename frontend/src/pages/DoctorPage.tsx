@@ -4,28 +4,20 @@ import { useWallet } from '@/contexts/WalletContext'
 import { DoctorAccess } from '@/components/DoctorAccess'
 import { DoctorRecords } from '@/components/DoctorRecords'
 import { DocumentUpload } from '@/components/DocumentUpload'
+import { DoctorKeySetup } from '@/components/DoctorKeySetup'
 import { WalletConnect } from '@/components/WalletConnect'
 import { Stethoscope, Upload, FolderOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { t, type Lang } from '@/lib/i18n'
 
 type Tab = 'upload' | 'records'
 
-function readWKFromHash(): string | null {
-  const hash = window.location.hash
-  const prefix = hash.startsWith('#wk=') ? '#wk=' : hash.startsWith('#key=') ? '#key=' : null
-  if (!prefix) return null
-  try {
-    return decodeURIComponent(hash.slice(prefix.length))
-  } catch {
-    return null
-  }
-}
+interface DoctorPageProps { lang: Lang }
 
-export function DoctorPage() {
+export function DoctorPage({ lang }: DoctorPageProps) {
   const { state } = useWallet()
   const [searchParams] = useSearchParams()
   const tokenId = searchParams.get('token')
-  const [encryptionKey] = useState<string | null>(readWKFromHash)
   const [tab, setTab] = useState<Tab>('upload')
 
   useEffect(() => {
@@ -41,12 +33,12 @@ export function DoctorPage() {
           <Stethoscope className="h-8 w-8 text-primary" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold">Doctor portal</h2>
+          <h2 className="text-lg font-semibold">{t('doctor', 'portal_title', lang)}</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Connect your Stellar wallet to continue
+            {t('doctor', 'portal_connect', lang)}
           </p>
         </div>
-        <WalletConnect />
+        <WalletConnect lang={lang} />
       </div>
     )
   }
@@ -54,21 +46,19 @@ export function DoctorPage() {
   if (tokenId) {
     return (
       <div className="max-w-lg mx-auto">
-        <DoctorAccess
-          tokenId={tokenId}
-          doctorPublicKey={state.publicKey}
-          encryptionKey={encryptionKey}
-        />
+        <DoctorAccess tokenId={tokenId} doctorPublicKey={state.publicKey} lang={lang} />
       </div>
     )
   }
 
   return (
     <div className="px-5 py-6 md:px-8 max-w-lg mx-auto flex flex-col gap-5">
+      <DoctorKeySetup doctorPublicKey={state.publicKey} lang={lang} />
+
       <div className="flex gap-1 p-0.5 bg-muted rounded-lg">
         {([
-          { id: 'upload', label: 'New Record', icon: Upload },
-          { id: 'records', label: 'Shared with me', icon: FolderOpen },
+          { id: 'upload', label: t('doctor', 'tab_upload', lang), icon: Upload },
+          { id: 'records', label: t('doctor', 'tab_records', lang), icon: FolderOpen },
         ] as { id: Tab; label: string; icon: React.ElementType }[]).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -86,8 +76,8 @@ export function DoctorPage() {
         ))}
       </div>
 
-      {tab === 'upload' && <DocumentUpload />}
-      {tab === 'records' && <DoctorRecords doctorPublicKey={state.publicKey} />}
+      {tab === 'upload' && <DocumentUpload lang={lang} />}
+      {tab === 'records' && <DoctorRecords doctorPublicKey={state.publicKey} lang={lang} />}
     </div>
   )
 }

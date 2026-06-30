@@ -10,25 +10,29 @@ import { encryptFile, encodePayload, generateKey, exportKey } from '@/lib/encryp
 import { uploadEncryptedPayload } from '@/lib/ipfs'
 import { registerDocument } from '@/lib/stellar'
 import { saveDocumentKey } from '@/lib/dockeys'
+import { t, type Lang } from '@/lib/i18n'
 
 type Step = 'idle' | 'encrypting' | 'uploading' | 'registering' | 'done'
 type InputMode = 'text' | 'file'
 
-const STEP_LABELS: Record<Step, string> = {
-  idle: '',
-  encrypting: 'Encrypting...',
-  uploading: 'Uploading to IPFS...',
-  registering: 'Registering on Stellar...',
-  done: 'Document registered',
+function stepLabel(step: Step, lang: Lang): string {
+  switch (step) {
+    case 'encrypting': return t('doctor', 'step_encrypting', lang)
+    case 'uploading': return t('doctor', 'step_uploading', lang)
+    case 'registering': return t('doctor', 'step_registering', lang)
+    case 'done': return t('doctor', 'step_done', lang)
+    default: return ''
+  }
 }
 
 const ACCEPTED_TYPES = '.txt,.pdf,.doc,.docx,.png,.jpg,.jpeg'
 
 interface DocumentUploadProps {
   onSuccess?: (documentId: string) => void
+  lang: Lang
 }
 
-export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
+export function DocumentUpload({ onSuccess, lang }: DocumentUploadProps) {
   const [mode, setMode] = useState<InputMode>('text')
   const [content, setContent] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -66,11 +70,11 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
     setError(null)
 
     if (!patientAddress.trim()) {
-      setError('Enter the patient Stellar address (starts with G).')
+      setError(t('doctor', 'err_patient', lang))
       return
     }
     if (mode === 'text' ? !content.trim() : !file) {
-      setError(mode === 'text' ? 'Write the clinical content.' : 'Select a file to upload.')
+      setError(mode === 'text' ? t('doctor', 'err_content', lang) : t('doctor', 'err_file', lang))
       return
     }
 
@@ -91,7 +95,7 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
       setStep('done')
       onSuccess?.(documentId)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error')
+      setError(e instanceof Error ? e.message : t('doctor', 'err_unknown', lang))
       setStep('idle')
     }
   }
@@ -101,13 +105,13 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
       <Card>
         <CardContent className="flex flex-col items-center gap-3 py-10">
           <CheckCircle className="h-10 w-10 text-green-500" />
-          <p className="text-sm font-medium">Document registered on Stellar</p>
+          <p className="text-sm font-medium">{t('doctor', 'done_title', lang)}</p>
           <Button
             variant="outline"
             size="sm"
             onClick={() => { setStep('idle'); setContent(''); setFile(null) }}
           >
-            Upload another
+            {t('doctor', 'upload_another', lang)}
           </Button>
         </CardContent>
       </Card>
@@ -119,13 +123,13 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <FileText className="h-4 w-4" />
-          New Medical Record
+          {t('doctor', 'new_record', lang)}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="space-y-1.5">
-            <Label htmlFor="patient">Patient Stellar address</Label>
+            <Label htmlFor="patient">{t('doctor', 'patient_addr', lang)}</Label>
             <Input
               id="patient"
               placeholder="G..."
@@ -137,7 +141,7 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="doctype">Document type</Label>
+            <Label htmlFor="doctype">{t('doctor', 'doc_type', lang)}</Label>
             <Input
               id="doctype"
               value={docType}
@@ -165,18 +169,18 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {m === 'text' ? 'Write text' : 'Upload file'}
+                {m === 'text' ? t('doctor', 'write_text', lang) : t('doctor', 'upload_file', lang)}
               </button>
             ))}
           </div>
 
           {mode === 'text' ? (
             <div className="space-y-1.5">
-              <Label htmlFor="content">Clinical content</Label>
+              <Label htmlFor="content">{t('doctor', 'clinical_content', lang)}</Label>
               <Textarea
                 id="content"
                 rows={6}
-                placeholder="Write the clinical record here..."
+                placeholder={t('doctor', 'content_placeholder', lang)}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 disabled={busy}
@@ -185,7 +189,7 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
             </div>
           ) : (
             <div className="space-y-1.5">
-              <Label>File</Label>
+              <Label>{t('doctor', 'file_label', lang)}</Label>
               {file ? (
                 <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5">
                   <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -210,7 +214,7 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
                   className="w-full rounded-lg border-2 border-dashed border-border py-8 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors flex flex-col items-center gap-2"
                 >
                   <Upload className="h-5 w-5" />
-                  <span>Click to select file</span>
+                  <span>{t('doctor', 'click_select', lang)}</span>
                   <span className="text-xs">{ACCEPTED_TYPES}</span>
                 </button>
               )}
@@ -231,12 +235,12 @@ export function DocumentUpload({ onSuccess }: DocumentUploadProps) {
             {busy ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {STEP_LABELS[step]}
+                {stepLabel(step, lang)}
               </>
             ) : (
               <>
                 <Upload className="h-4 w-4 mr-2" />
-                Encrypt & Upload
+                {t('doctor', 'encrypt_upload', lang)}
               </>
             )}
           </Button>

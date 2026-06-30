@@ -3,9 +3,16 @@
 Technical reference for the MedVault protocol: a patient-sovereign medical-records system where data is encrypted client-side, stored on IPFS, and gated by time-bound access tokens on a Stellar Soroban contract.
 
 - **Network:** Stellar Testnet
-- **Contract ID:** `CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK`
-- **Contract:** Rust / Soroban SDK v26 — 12 functions, 20 unit tests
+- **Contract ID:** `CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3`
+- **Contract:** Rust / Soroban SDK v26 — 14 functions, 22 unit tests
 - **Frontend:** React 19 + TypeScript + Vite, PWA
+
+### Contract deployments
+
+| Version | Contract ID | Notes |
+|---|---|---|
+| `v0.5` · ECIES (active) | `CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3` | Adds `register_pubkey` / `get_pubkey` (X25519 key directory) — 14 functions, 22 tests |
+| `v0.4` · KEM (previous) | `CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK` | Kept for traceability — 12 functions, 20 tests, in-link wrapping key |
 
 ---
 
@@ -46,7 +53,7 @@ flowchart TB
 | Component | Responsibility | How |
 |---|---|---|
 | React PWA | UI, orchestration, crypto | Calls Web Crypto, IPFS, and Soroban from the browser; never persists plaintext |
-| Web Crypto (`SubtleCrypto`) | Symmetric encryption + key wrapping | AES-256-GCM; no third-party crypto dependency |
+| Web Crypto (`SubtleCrypto`) | Symmetric encryption + AES-GCM key wrapping | AES-256-GCM native; X25519 ECDH + HKDF via `@noble/curves` + `@noble/hashes` for ECIES |
 | Freighter | Key custody + transaction signing | Holds the Stellar secret key; signs XDR; the app never sees private keys |
 | IPFS (Pinata) | Ciphertext storage | Content-addressed; the CID is the integrity proof of the blob |
 | Soroban contract | Registry, access tokens, audit log | Persistent/temporary storage + `require_auth` + ledger-time expiry |
@@ -96,46 +103,53 @@ Implemented in `frontend/src/lib/encryption.ts`.
 - GCM provides confidentiality **and** integrity: the 128-bit auth tag is verified on decrypt, so any tampering with the ciphertext on IPFS causes `decrypt` to throw.
 - Payload serialization (`encodePayload`): `{ iv: base64, ct: base64 }` JSON — this exact blob is what is uploaded to IPFS.
 
-### 4.2 Key encapsulation (KEM) — v2, deployed
+### 4.2 Key encapsulation (ECIES + sign-to-derive) — v3, deployed
 
-Implemented in `frontend/src/lib/ecies.ts`. The AES record key is never transmitted or stored in clear.
+Implemented in `frontend/src/lib/ecies.ts`, `eckeys.ts`, and `doctorkey.ts`. The AES record key is wrapped to the **recipient's X25519 public key**, so unwrapping requires *being* the doctor's wallet — there is no copyable secret and nothing travels in the link or QR.
 
-- A fresh **256-bit wrapping key (WK)** is generated per grant (`generateWrappingKey`).
-- The raw AES key is encrypted under the WK with AES-256-GCM (`encryptKeyWithWK`). The on-chain payload layout is:
-  - `encrypted_key = IV(12 bytes) || GCM_ciphertext(AES key + tag)` → 12 + 32 + 16 = **60 bytes**.
-- The **wrapped key is stored on-chain** in `AccessToken.encrypted_key` (via `grant_access`).
-- The **WK travels only in the URL fragment** (`#wk=<base64>`). Browsers never send the fragment to any server, so the WK stays off the wire.
+**Sign-to-derive (doctor enrolls once).** The doctor signs a fixed message with their wallet (`signMessageWithWallet`); the seed is `SHA-512(signature)[0..32]`, which becomes an X25519 private key. The private key is persisted locally (`localStorage: medvault_ec_keys`) so decryption never depends on `signMessage` being byte-deterministic across calls. The matching X25519 **public** key is published on-chain via `register_pubkey` — a wallet-indexed key directory.
 
-**Result — two independent factors are required to decrypt a record:**
+**Wrap (patient grants access).**
+- The patient reads the doctor's published key with `get_pubkey(doctorAddress)`. If none exists, the grant UI blocks with "this doctor hasn't enabled secure receiving yet."
+- A fresh ephemeral X25519 keypair is generated per grant. The shared secret is `ECDH(eph_priv, doctor_pub)`, run through `HKDF-SHA256` (salt = `eph_pub`, info = `medvault-ecies-v3`) to a 256-bit AES-GCM key.
+- The document AES key is encrypted under that derived key. The on-chain payload layout is:
+  - `encrypted_key = version(0x03) || eph_pub(32) || iv(12) || ct(AES key + GCM tag)` → 1 + 32 + 12 + 48 = **93 bytes**.
+- The blob is stored on-chain in `AccessToken.encrypted_key` (via `grant_access`).
 
-1. The on-chain access token (the wrapped AES key) — fetched with `get_encrypted_key`.
-2. The wrapping key from the share link fragment.
-
-Possessing only one is useless: the link without the on-chain token has no ciphertext key; the chain without the link has only an AES key encrypted under an unknown WK.
+**Unwrap (doctor reads).** The doctor re-loads their X25519 private key, recomputes `ECDH(doctor_priv, eph_pub)` and the same HKDF key, and AES-GCM-decrypts the document key — entirely client-side, in RAM.
 
 ```mermaid
 sequenceDiagram
-    participant P as Patient (browser)
-    participant SC as Soroban
     participant D as Doctor (browser)
+    participant SC as Soroban
+    participant P as Patient (browser)
+
+    Note over D: enroll once
+    D->>D: sig = signMessage(fixed); priv = SHA-512(sig)[0..32]
+    D->>SC: register_pubkey(doctor, x25519_pub(priv))
 
     Note over P: has AES record key K
-    P->>P: WK = random 256-bit
-    P->>P: enc = AES-GCM(K) under WK  (IV||ct||tag, 60B)
-    P->>SC: grant_access(..., encrypted_key = enc)
+    P->>SC: pub = get_pubkey(doctor)
+    P->>P: eph = X25519 keygen; s = ECDH(eph_priv, pub)
+    P->>P: dk = HKDF(s, salt=eph_pub, info=ecies-v3)
+    P->>P: blob = 0x03 || eph_pub || iv || AES-GCM(K) under dk  (93B)
+    P->>SC: grant_access(..., encrypted_key = blob)
     SC-->>P: token_id
-    P-->>D: link  /doctor?token=token_id#wk=base64(WK)
+    P-->>D: link  /doctor?token=token_id   (no secret in link)
     D->>SC: get_encrypted_key(token_id)
-    SC-->>D: enc
-    D->>D: K = AES-GCM-decrypt(enc) under WK from #wk
+    SC-->>D: blob
+    D->>D: s = ECDH(doctor_priv, eph_pub); K = AES-GCM-decrypt(blob)
     Note over D: K reconstructed in RAM only
 ```
 
+The `version` byte distinguishes the v3 ECIES blob from the legacy v2 wrapping-key format, so the contract storage layout never changed.
+
 ### 4.3 Key custody summary
 
-- **Record key (AES):** ephemeral in browser RAM; persisted only as ciphertext-wrapped bytes on-chain.
-- **Wrapping key:** never stored; exists only inside the share URL fragment.
-- **Stellar private key:** held by Freighter; the app requests signatures, never raw keys.
+- **Record key (AES):** ephemeral in browser RAM; persisted only as ECIES-wrapped bytes on-chain.
+- **Doctor X25519 private key:** derived from a wallet signature, persisted client-side only; the public half lives on-chain. Never transmitted.
+- **Ephemeral X25519 key:** generated per grant; the public half is embedded in the blob, the private half is discarded after wrapping.
+- **Stellar private key:** held by the wallet (Freighter et al.); the app requests signatures, never raw keys.
 
 ---
 
@@ -146,6 +160,7 @@ sequenceDiagram
 | Function | Authorizing address | Guarantees |
 |---|---|---|
 | `register_document` | `doctor` | Only the named doctor can register a document under their identity |
+| `register_pubkey` | `owner` | Only the wallet itself can publish/replace its X25519 encryption public key |
 | `grant_access` | `patient` | Only the record owner can mint an access token / store a wrapped key |
 | `log_access` | `doctor` | Audit entries can only be written by the doctor performing the access — no forged attribution |
 | `revoke_access` | `patient` | Only the patient can revoke; combined with the in-function `token.patient == patient` check, one patient cannot revoke another's grants |
@@ -167,6 +182,7 @@ sequenceDiagram
 ### Writes (require auth)
 
 - `register_document(doctor, patient, cid, doc_type) -> document_id` — stores `Document`, appends to `PatientDocs`. Auth: `doctor`.
+- `register_pubkey(owner, pubkey)` — publishes/replaces the owner's X25519 encryption public key in the on-chain key directory. Auth: `owner`.
 - `grant_access(patient, doctor, document_id, expires_at, encrypted_key) -> token_id` — stores `AccessToken` in temporary storage, appends to `DoctorTokens`. Auth: `patient`.
 - `log_access(doctor, token_id, patient)` — appends an `AccessEvent` to the patient's persistent audit log. Auth: `doctor`.
 - `revoke_access(patient, token_id)` — removes the token from temporary storage if `token.patient == patient`. Auth: `patient`.
@@ -176,7 +192,8 @@ sequenceDiagram
 - `verify_access(token_id, doctor) -> bool` — true iff token exists, `token.doctor == doctor`, and `ledger.timestamp() < expires_at`.
 - `get_document(document_id) -> Option<Document>`
 - `get_token_info(token_id) -> Option<AccessToken>`
-- `get_encrypted_key(token_id) -> Option<Bytes>` — returns the wrapped AES key for KEM decryption.
+- `get_pubkey(owner) -> Option<BytesN<32>>` — returns the owner's registered X25519 encryption public key, or `None` if not enrolled.
+- `get_encrypted_key(token_id) -> Option<Bytes>` — returns the ECIES-wrapped AES key blob (`version‖eph_pub‖iv‖ct`).
 - `get_audit_log(patient) -> Vec<AccessEvent>`
 - `get_patient_documents(patient) -> Vec<BytesN<32>>`
 - `get_doctor_tokens(doctor) -> Vec<BytesN<32>>`
@@ -205,19 +222,24 @@ sequenceDiagram
     B->>SC: register_document(doctor, patient, CID, type)  [doctor.require_auth]
     SC-->>B: document_id = sha256(CID)
 
+    Note over D2,SC: ── Enroll once (doctor-signed) ──
+    D2->>B: sign fixed message → X25519 keypair
+    D2->>SC: register_pubkey(doctor2, x25519_pub)  [doctor.require_auth]
+
     Note over P,SC: ── Grant (patient-signed) ──
     P->>B: select document + duration
-    B->>B: WK = random, encrypted_key = wrap(K under WK)
-    P->>SC: grant_access(patient, doctor2, document_id, expires_at, encrypted_key)  [patient.require_auth]
+    P->>SC: get_pubkey(doctor2) → doctor2_pub
+    B->>B: ECIES wrap K to doctor2_pub → blob (version‖eph_pub‖iv‖ct)
+    P->>SC: grant_access(patient, doctor2, document_id, expires_at, blob)  [patient.require_auth]
     SC-->>P: token_id
-    P-->>D2: QR / link  /doctor?token=token_id#wk=WK
+    P-->>D2: QR / link  /doctor?token=token_id   (no secret in link)
 
     Note over D2,SC: ── Access + audit (doctor-signed) ──
     D2->>SC: verify_access(token_id, doctor2)
     SC-->>D2: true (valid + not expired)
     D2->>SC: get_encrypted_key(token_id)
-    SC-->>D2: encrypted_key
-    D2->>B: K = unwrap(encrypted_key, WK from #wk)
+    SC-->>D2: blob
+    D2->>B: K = ECIES unwrap(blob, doctor2 X25519 priv)
     D2->>I: download CID
     I-->>D2: {iv, ct}
     D2->>B: decryptFile() -> plaintext in RAM
@@ -248,15 +270,15 @@ The contract ships a **real Groth16 verifier** running on Stellar's native BLS12
 | Unauthorized document registration | On-chain auth | `doctor.require_auth()` in `register_document` |
 | Forged audit entries | On-chain auth | `log_access` requires the doctor's signature; attribution = signer |
 | Cross-patient grant revocation | Auth + ownership check | `patient.require_auth()` + `token.patient == patient` |
-| Stolen share link alone | KEM split-custody | Link holds only the WK; without the on-chain token there is no key ciphertext |
-| Stolen on-chain token alone | KEM split-custody | Token holds an AES key encrypted under an unknown WK |
+| Stolen share link / token alone | ECIES to recipient key | The wrapped key only opens with the doctor's X25519 private key; the link carries no secret, and the on-chain blob is useless without that key |
+| Off-app decryption with public reads | Recipient-bound encryption | `get_encrypted_key` is a public read, but the blob is sealed to the doctor's X25519 key — possessing it is not enough to decrypt |
 | Expired-token replay | Consensus-time expiry | `verify_access` checks `ledger.timestamp()`; temporary storage evicts the token |
 | Plaintext leakage to disk/cache | RAM-only decryption | No write to `localStorage`/`IndexedDB`; service worker excludes RPC/IPFS payloads |
 | Private-key exposure to the app | External custody | Freighter signs; the app never receives secret keys |
 
 **Residual / out-of-scope (current version)**
 
-- The wrapping key in the URL fragment is as strong as the channel used to share the link; v3 (ECIES with the recipient's Stellar public key) removes the in-link secret entirely.
+- The doctor's X25519 private key is persisted client-side (derived from a wallet signature). Cross-device use needs the doctor to re-enroll on each device, or a future encrypted key-escrow; loss of local storage means re-enrolling (new grants only).
 - IPFS pin availability depends on the Pinata account; loss of pinning makes ciphertext unreachable (the on-chain registry still proves it existed).
 - On-chain metadata (which addresses interacted, timestamps, doc_type) is public; it reveals relationship graphs even though content stays encrypted.
 
@@ -267,8 +289,8 @@ The contract ships a **real Groth16 verifier** running on Stellar's native BLS12
 | Version | Scheme | Property | Status |
 |---|---|---|---|
 | v1 | AES key in URL hash | Key off the wire (fragment), link-dependent | superseded |
-| v2 | On-chain wrapped key (KEM) | Two-factor: chain token + link WK | **deployed** |
-| v3 | ECIES via Stellar pubkey (X25519 ECDH) | No secret in the link at all | planned |
+| v2 | On-chain wrapped key (KEM) | Two-factor: chain token + link WK | superseded |
+| v3 | ECIES + sign-to-derive (X25519 ECDH + on-chain pubkey directory) | No secret in the link at all; decrypt = being the recipient wallet | **deployed** |
 | v4 | ZK Merkle membership (BLS12-381 + Poseidon) | Anonymous proof of authorization | on-chain verifier ready |
 
 ---
@@ -281,13 +303,15 @@ medvault-stellar/
 ├── README.md
 ├── contracts/medvault/
 │   └── contracts/medvault/src/
-│       ├── lib.rs                       # contract: 12 functions
-│       └── test.rs                      # 20 unit tests
+│       ├── lib.rs                       # contract: 14 functions
+│       └── test.rs                      # 22 unit tests
 └── frontend/
     └── src/
         ├── lib/
         │   ├── encryption.ts            # AES-256-GCM record encryption
-        │   ├── ecies.ts                 # KEM wrapping key scheme
+        │   ├── ecies.ts                 # ECIES wrap/unwrap (X25519 ECDH + HKDF + AES-GCM)
+        │   ├── eckeys.ts                # X25519 keypair via sign-to-derive
+        │   ├── doctorkey.ts             # enroll/publish/load recipient key
         │   ├── ipfs.ts                  # Pinata upload/download
         │   ├── stellar.ts               # contract client (writes signed, reads simulated)
         │   └── i18n.ts                  # EN/ES/PT
@@ -302,7 +326,7 @@ medvault-stellar/
 ```bash
 # Contract
 cd contracts/medvault
-cargo test                              # 20 tests
+cargo test                              # 22 tests
 stellar contract build                  # -> target/wasm32v1-none/release/medvault.wasm
 stellar contract deploy \
   --wasm target/wasm32v1-none/release/medvault.wasm \

@@ -15,7 +15,7 @@ See [ARCHITECTURE.md §9](./ARCHITECTURE.md) for the full threat model. In short
 - **Confidentiality of records** — AES-256-GCM client-side; only ciphertext or hashes ever leave the browser.
 - **Integrity of records** — the GCM auth tag fails closed on any tampering of the IPFS blob.
 - **Write authorization** — every state-mutating contract call enforces `require_auth()` on the acting wallet.
-- **Two-factor decryption** — the AES key is wrapped on-chain (KEM); the wrapping key travels only in the URL fragment.
+- **Recipient-bound decryption (ECIES)** — the AES key is wrapped to the doctor's on-chain X25519 public key (ephemeral ECDH + HKDF + AES-GCM); only that doctor's wallet can unwrap it. No secret travels in the share link or QR.
 - **Tamper-proof expiry** — `verify_access` checks consensus ledger time; tokens live in temporary storage and self-evict.
 - **Append-only audit** — no contract path mutates or deletes `AccessEvent` history.
 - **Anonymous authorization (ZK)** — `verify_zkp_proof` verifies Groth16 membership proofs on-chain without revealing
@@ -26,6 +26,7 @@ See [ARCHITECTURE.md §9](./ARCHITECTURE.md) for the full threat model. In short
 | Primitive | Where | Assumption |
 |---|---|---|
 | AES-256-GCM | record + key wrapping | Web Crypto `SubtleCrypto`; 96-bit random IV per encryption, never reused with the same key |
+| X25519 ECDH + HKDF-SHA256 | ECIES key wrapping (`@noble/curves`, `@noble/hashes`) | Computational Diffie-Hellman on Curve25519; fresh ephemeral key per grant; recipient key derived from a wallet signature (`SHA-512(sig)[0..32]`) |
 | Groth16 / BLS12-381 | on-chain `verify_zkp_proof` | Soundness of Groth16 + the discrete-log/pairing hardness of BLS12-381 |
 | Poseidon (BLS12-381 scalar field) | Merkle hashing | Collision resistance with circomlib's optimized round constants |
 | Trusted setup (Powers of Tau + Phase 2) | proving key | At least **one** ceremony contributor was honest and discarded their toxic waste |
@@ -48,8 +49,9 @@ on separate machines and a future, publicly verifiable beacon** (e.g. a Bitcoin 
 - **Not externally audited.** No third party has reviewed the contract or the circuit.
 - **On-chain metadata is public.** Which wallets interacted, timestamps, and `doc_type` are world-readable; the
   relationship graph leaks even though record content stays encrypted.
-- **Wrapping key in the URL fragment** is only as strong as the channel used to share the link. The planned v3 (ECIES to
-  the recipient's Stellar public key) removes the in-link secret entirely.
+- **Doctor key custody is client-side.** The doctor's X25519 private key is derived from a wallet signature and persisted
+  in `localStorage`; it is not escrowed. A doctor using a new device must re-enroll (`register_pubkey`) before receiving
+  new grants, and clearing local storage requires re-enrolling. Cross-device key recovery is future work.
 - **IPFS availability** depends on the Pinata pin; losing the pin makes ciphertext unreachable (the on-chain registry
   still proves it existed).
 - **Testnet only.** The contract runs on Stellar Testnet; balances and persistence carry no production guarantees.

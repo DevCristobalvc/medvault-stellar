@@ -2,12 +2,21 @@
 
 > Hackathon: **Stellar PULSO** (NearX + Stellar Development Foundation) · Colombia
 
+> **Version:** `v0.5.0` — v3 cryptography: ECIES + sign-to-derive (no copyable key)
+
 **MedVault** gives patients full control over their medical history. Records are encrypted before leaving the browser, stored on IPFS, and access is governed by time-bound smart contracts on Stellar. Every read is logged on-chain — immutably.
 
 **Architecture:** [ARCHITECTURE.md](./ARCHITECTURE.md) — data model, crypto design, auth model, threat model  
 **Live demo:** https://medvault-stellar.vercel.app  
-**Contract (testnet):** `CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK`  
-**Explorer:** https://stellar.expert/explorer/testnet/contract/CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK
+**Contract (testnet):** `CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3`  
+**Explorer:** https://stellar.expert/explorer/testnet/contract/CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3
+
+### Contract deployments
+
+| Version | Contract ID | Notes |
+|---|---|---|
+| `v0.5` · ECIES (active) | `CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3` | Adds `register_pubkey` / `get_pubkey` (X25519 key directory). 14 functions. |
+| `v0.4` · KEM (previous) | `CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK` | Kept for traceability. 12 functions, covered by `integration_test.sh`. |
 
 ---
 
@@ -87,12 +96,19 @@ sequenceDiagram
     B->>S: register_document(doctor, patient, CID, type)
     S-->>B: document_id
 
-    P->>S: grant_access(patient, doctor2, document_id, expires_at)
+    D2->>D2: sign-to-derive X25519 keypair
+    D2->>S: register_pubkey(doctor2, x25519_pub)
+
+    P->>S: get_pubkey(doctor2) → pub
+    P->>P: ECIES wrap AES key to pub → blob
+    P->>S: grant_access(patient, doctor2, document_id, expires_at, blob)
     S-->>P: token_id
-    P->>P: Generate QR → /doctor?token=<token_id>
+    P->>P: Generate QR → /doctor?token=<token_id> (no secret in link)
 
     D2->>S: verify_access(token_id, doctor2)
     S-->>D2: true (if valid + not expired)
+    D2->>S: get_encrypted_key(token_id) → blob
+    D2->>D2: ECIES unwrap blob → AES key
     D2->>I: downloadEncryptedPayload(CID)
     I-->>D2: {ciphertext, iv}
     D2->>B: decryptFile(ciphertext, iv, key) → plaintext in RAM
@@ -121,13 +137,15 @@ Every read event is written to **persistent storage** on Stellar. The patient ca
 
 **Language:** Rust (Soroban SDK v26)  
 **Network:** Stellar Testnet  
-**Contract ID:** `CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK`
+**Contract ID:** `CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3`
 
 ### Functions
 
 | Function | Auth | Storage | Description |
 |---|---|---|---|
 | `register_document` | `doctor.require_auth()` | Persistent | Register encrypted CID on-chain |
+| `register_pubkey` | `owner.require_auth()` | Persistent | Publish the owner's X25519 public key (ECIES key directory) |
+| `get_pubkey` | None (read) | — | Fetch a wallet's registered X25519 public key |
 | `grant_access` | `patient.require_auth()` | Temporary | Generate time-bound access token (stores encrypted AES key) |
 | `verify_access` | None (read) | — | Check token validity and expiry |
 | `revoke_access` | `patient.require_auth()` | Temporary | Delete token before expiry |
@@ -136,7 +154,7 @@ Every read event is written to **persistent storage** on Stellar. The patient ca
 | `get_patient_documents` | None (read) | — | List all document IDs for a patient |
 | `get_document` | None (read) | — | Get document metadata by ID |
 | `get_token_info` | None (read) | — | Resolve document_id from token |
-| `get_encrypted_key` | None (read) | — | Fetch on-chain encrypted AES key (KEM) |
+| `get_encrypted_key` | None (read) | — | Fetch on-chain ECIES-wrapped AES key blob (`version‖eph_pub‖iv‖ct`) |
 | `get_doctor_tokens` | None (read) | — | List access tokens issued to a doctor |
 | `verify_zkp_proof` | None (read) | — | Groth16 verification via BLS12-381 pairing (CAP-0052) |
 
@@ -147,7 +165,7 @@ Every read event is written to **persistent storage** on Stellar. The patient ca
 ```bash
 cd contracts/medvault
 cargo test
-# 20 tests, 0 failures
+# 22 tests, 0 failures
 ```
 
 ---
@@ -211,7 +229,7 @@ stellar contract deploy \
 ## Environment Variables
 
 ```env
-VITE_CONTRACT_ID=CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK
+VITE_CONTRACT_ID=CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3
 VITE_SOROBAN_RPC=https://soroban-testnet.stellar.org
 VITE_PINATA_JWT=<your-pinata-jwt>
 VITE_PINATA_GATEWAY=gateway.pinata.cloud
@@ -222,7 +240,7 @@ VITE_PINATA_GATEWAY=gateway.pinata.cloud
 ## Security Model
 
 - **Plaintext never leaves the browser** — files are encrypted with AES-256-GCM (Web Crypto `SubtleCrypto`, 96-bit random IV per file) before any network call. IPFS and Stellar only ever see ciphertext or hashes.
-- **The AES key is wrapped, never stored in clear** — a random 256-bit wrapping key encrypts the AES key; the wrapped key is stored on-chain (`AccessToken.encrypted_key`) and the wrapping key travels only in the URL fragment (`#wk=`), which browsers never send to servers. Decryption requires *both* the on-chain token and the link.
+- **The AES key is ECIES-wrapped to the doctor's public key (v3)** — the doctor publishes an X25519 public key on-chain (`register_pubkey`), derived from a wallet signature (seed = `SHA-512(sig)[0..32]`). The patient reads it (`get_pubkey`) and wraps the document AES key with ephemeral X25519 ECDH + HKDF-SHA256 + AES-GCM, storing `version‖eph_pub‖iv‖ct` in `AccessToken.encrypted_key`. **Nothing travels in the URL or QR** — decrypting requires *being* the doctor wallet, not holding a copyable secret. (v2 wrapped with a random key carried in a `#wk=` fragment; superseded.)
 - **Write authorization is enforced on-chain** — `register_document`, `grant_access`, `log_access`, and `revoke_access` call `require_auth()` on the acting address. Soroban rejects the invocation unless that wallet authorized the call, so no third party can register documents, mint tokens, forge audit entries, or revoke another patient's grants.
 - **Expiry is tamper-proof** — `verify_access` compares against `env.ledger().timestamp()` (consensus ledger time), not client clocks. Tokens live in **temporary storage** and are evicted by the network after their TTL — no server-side invalidation job exists.
 - **Decryption happens in RAM only** — plaintext is never written to `localStorage`, `IndexedDB`, or the service-worker cache. The service worker uses `NetworkFirst` / `StaleWhileRevalidate` and explicitly excludes Soroban RPC and IPFS payloads from precaching.
@@ -260,7 +278,7 @@ The full circuit, its soundness/booleanity suite, and the on-chain verifier refe
 
 - **Production trusted setup** — the current zkey uses a single dev contribution; a multi-party ceremony is required before mainnet.
 - **TTL extension on `grant_access`** — call `extend_ttl` on the temporary token entry to guarantee it survives until `expires_at` for long-lived grants (e.g. the 7-day option), independent of the network's default temporary TTL.
-- **ECIES key exchange** — encrypt the AES key with the patient's Stellar public key, eliminating out-of-band key sharing.
+- **Cross-device key recovery** — ECIES sign-to-derive (shipped in v3) persists the X25519 private key locally; cross-device use depends on `signMessage` being byte-deterministic. Add an encrypted key-escrow fallback for multi-device doctors.
 - **Multi-document vault** — version history, document categories, revocation.
 - **Stellar Anchor integration** — for identity verification and KYC.
 
@@ -272,8 +290,8 @@ The full circuit, its soundness/booleanity suite, and the on-chain verifier refe
 medvault-stellar/
 ├── contracts/medvault/          # Soroban smart contract (Rust)
 │   └── contracts/medvault/src/
-│       ├── lib.rs               # Contract logic (12 functions)
-│       └── test.rs              # 20 unit tests
+│       ├── lib.rs               # Contract logic (14 functions)
+│       └── test.rs              # 22 unit tests
 ├── frontend/                    # React PWA
 │   ├── src/
 │   │   ├── components/          # UI components

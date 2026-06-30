@@ -35,6 +35,31 @@ fn test_register_document() {
 }
 
 #[test]
+fn test_register_and_get_pubkey() {
+    let (env, client) = setup();
+    let doctor = Address::generate(&env);
+
+    assert!(client.get_pubkey(&doctor).is_none());
+
+    let pubkey = BytesN::from_array(&env, &[7u8; 32]);
+    client.register_pubkey(&doctor, &pubkey);
+
+    assert_eq!(client.get_pubkey(&doctor), Some(pubkey));
+}
+
+#[test]
+fn test_register_pubkey_overwrites() {
+    let (env, client) = setup();
+    let doctor = Address::generate(&env);
+
+    client.register_pubkey(&doctor, &BytesN::from_array(&env, &[1u8; 32]));
+    let updated = BytesN::from_array(&env, &[2u8; 32]);
+    client.register_pubkey(&doctor, &updated);
+
+    assert_eq!(client.get_pubkey(&doctor), Some(updated));
+}
+
+#[test]
 fn test_patient_documents_list() {
     let (env, client) = setup();
     let doctor = Address::generate(&env);

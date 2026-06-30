@@ -41,6 +41,7 @@ pub enum DataKey {
     AuditLog(Address),
     PatientDocs(Address),
     DoctorTokens(Address),
+    PubKey(Address),
 }
 
 fn id_from_bytes(env: &Env, data: Bytes) -> BytesN<32> {
@@ -99,6 +100,15 @@ impl MedVaultContract {
         env.storage().persistent().set(&DataKey::PatientDocs(patient), &docs);
 
         doc_id
+    }
+
+    pub fn register_pubkey(env: Env, owner: Address, pubkey: BytesN<32>) {
+        owner.require_auth();
+        env.storage().persistent().set(&DataKey::PubKey(owner), &pubkey);
+    }
+
+    pub fn get_pubkey(env: Env, owner: Address) -> Option<BytesN<32>> {
+        env.storage().persistent().get(&DataKey::PubKey(owner))
     }
 
     pub fn grant_access(

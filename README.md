@@ -4,7 +4,26 @@
 
 > **Version:** `v0.5.0` — v3 cryptography: ECIES + sign-to-derive (no copyable key)
 
-**MedVault** gives patients full control over their medical history. Records are encrypted before leaving the browser, stored on IPFS, and access is governed by time-bound smart contracts on Stellar. Every read is logged on-chain — immutably.
+**MedVault turns a patient's medical history into something they alone control.** Every record is encrypted in the browser before it touches the network, pinned to IPFS as ciphertext, and gated by time-bound smart contracts on Stellar. The server never holds anything readable, and every single read is written to an immutable on-chain audit log — so the patient always knows who opened their data, from which wallet, and when.
+
+Think of it as a vault where **the patient holds the only key**. Doctors write encrypted records into it; the patient grants scoped, self-expiring access with a QR code; Soroban enforces the rules and keeps the history. There is no central database of plaintext to breach — a full server compromise leaks nothing.
+
+### What makes it different
+
+- **Client-side encryption, always** — AES-256-GCM via the Web Crypto API. Plaintext never leaves the device; IPFS and Stellar only ever see ciphertext or content hashes.
+- **Keys wrapped to the recipient, never shared** — the document key is ECIES-wrapped to the doctor's on-chain X25519 public key (derived from a wallet signature, no copyable secret). Reading a record requires *being* that wallet, not holding a link or a fragment.
+- **The chain is the gatekeeper** — Soroban stores the document registry, mints access tokens that self-expire from temporary storage, and appends every read to a tamper-proof audit trail. No cron jobs, no server-side session store.
+- **Zero-knowledge doctor proofs (ZK)** — `verify_zkp_proof` runs a full Groth16 verification *on-chain* using Stellar's native BLS12-381 pairing host function (CAP-0052). A doctor proves they belong to the authorized-doctor set **without revealing which member they are**. The proof is generated in the browser with snarkjs in ~2 s.
+
+### Technical snapshot
+
+| Layer | What it uses |
+|---|---|
+| Smart contract | Rust + Soroban SDK v26 · 14 functions · 22 unit tests |
+| Cryptography | AES-256-GCM (records) · ECIES X25519 + HKDF-SHA256 (key wrap) · Groth16 / BLS12-381 (zero-knowledge) |
+| Storage | IPFS via Pinata — ciphertext only; the chain stores just the CID |
+| Frontend | React 19 + TypeScript + Vite · shadcn/ui + Tailwind v4 · installable PWA |
+| Networks | Testnet (live public demo) · Mainnet (contract deployed) |
 
 **Architecture:** [ARCHITECTURE.md](./ARCHITECTURE.md) — data model, crypto design, auth model, threat model  
 **Live demo:** https://medvault-stellar.vercel.app  
@@ -13,10 +32,11 @@
 
 ### Contract deployments
 
-| Version | Contract ID | Notes |
-|---|---|---|
-| `v0.5` · ECIES (active) | `CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3` | Adds `register_pubkey` / `get_pubkey` (X25519 key directory). 14 functions. |
-| `v0.4` · KEM (previous) | `CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK` | Kept for traceability. 12 functions, covered by `integration_test.sh`. |
+| Version | Network | Contract ID | Notes |
+|---|---|---|---|
+| `v0.5.1` · enum-hardened | Mainnet | `CCNCFPI2MN4ZUYYQDT2KH25B7V45P6WXFRSQ5LHM4RSSKE75D2LLFFJA` | `docType` locked to a closed enum — no free-text PII can be written to the public ledger. |
+| `v0.5` · ECIES (active demo) | Testnet | `CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3` | Adds `register_pubkey` / `get_pubkey` (X25519 key directory). 14 functions. |
+| `v0.4` · KEM (previous) | Testnet | `CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK` | Kept for traceability. 12 functions, covered by `integration_test.sh`. |
 
 ---
 

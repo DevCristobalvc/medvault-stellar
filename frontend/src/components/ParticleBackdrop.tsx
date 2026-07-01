@@ -1,6 +1,4 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
-import { Fingerprint } from 'lucide-react'
-import { motion } from 'framer-motion'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 
 const HumanDataField = lazy(() => import('@/components/three/HumanDataField'))
@@ -26,24 +24,6 @@ const TECH: { label: string; appear: number; className: string }[] = [
   { label: 'Soroban · Stellar', appear: 0.66, className: 'bottom-20 right-5 md:right-16 text-[#A87900]' },
 ]
 
-function Fallback({ animate }: { animate: boolean }) {
-  return (
-    <div className="flex h-full items-center justify-center">
-      <motion.div
-        animate={
-          animate
-            ? { boxShadow: ['0 0 0 0 rgba(27,79,216,0)', '0 0 0 14px rgba(27,79,216,0.08)', '0 0 0 0 rgba(27,79,216,0)'] }
-            : {}
-        }
-        transition={{ duration: 2.5, repeat: Infinity, ease: 'easeOut' }}
-        className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary shadow-md"
-      >
-        <Fingerprint className="h-10 w-10 text-primary-foreground" />
-      </motion.div>
-    </div>
-  )
-}
-
 export function ParticleBackdrop({ progress }: { progress: { current: number } }) {
   const reduced = useReducedMotion()
   const [enabled, setEnabled] = useState(false)
@@ -67,12 +47,10 @@ export function ParticleBackdrop({ progress }: { progress: { current: number } }
         style={{ background: 'radial-gradient(circle, rgba(245,190,0,0.12) 0%, transparent 70%)', filter: 'blur(50px)' }}
       />
 
-      {enabled ? (
-        <Suspense fallback={<Fallback animate={false} />}>
+      {enabled && (
+        <Suspense fallback={null}>
           <HumanDataField progress={progress} />
         </Suspense>
-      ) : (
-        <Fallback animate={!reduced} />
       )}
 
       {enabled && (

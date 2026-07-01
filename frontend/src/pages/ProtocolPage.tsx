@@ -305,8 +305,13 @@ export function ProtocolPage({ lang }: ProtocolPageProps) {
         <p className="text-muted-foreground text-base max-w-md leading-relaxed">
           {t('protocol', 'sub', lang)}
         </p>
-        <div className="font-mono text-xs bg-muted/60 border border-border rounded-lg px-4 py-2 text-muted-foreground">
-          {CONTRACT_ID}
+        <div className="flex flex-col items-center gap-2 font-mono text-xs w-full max-w-md">
+          <div className="w-full bg-muted/60 border border-border rounded-lg px-4 py-2 text-muted-foreground break-all">
+            <span className="text-green-700 font-medium">Testnet</span> | {CONTRACT_ID}
+          </div>
+          <div className="w-full bg-muted/60 border border-border rounded-lg px-4 py-2 text-muted-foreground break-all">
+            <span className="text-blue-700 font-medium">Mainnet</span> | {MAINNET_CONTRACT_ID}
+          </div>
         </div>
       </section>
 

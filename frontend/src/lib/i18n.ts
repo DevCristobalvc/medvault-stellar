@@ -17,7 +17,7 @@ const translations = {
     deck:       { en: 'Deck',       es: 'Deck',        pt: 'Deck' },
   },
   home: {
-    badge:    { en: 'Built on Stellar Testnet', es: 'Construido en Stellar Testnet', pt: 'Construído na Stellar Testnet' },
+    badge:    { en: 'Built on Stellar Testnet & Mainnet', es: 'Construido en Stellar Testnet y Mainnet', pt: 'Construído na Stellar Testnet e Mainnet' },
     headline: { en: 'Your body, your records', es: 'Tu cuerpo, tus datos', pt: 'Seu corpo, seus dados' },
     sub:      { en: 'MedVault is sovereign medical record infrastructure. Doctors prove they are authorized with zero-knowledge proofs (ZKP) | verified on-chain, without revealing their identity. AES-256 encrypted, IPFS stored, governed by time-bound smart contracts on Stellar.', es: 'MedVault es infraestructura soberana de historias clínicas. Los médicos demuestran que están autorizados con pruebas de conocimiento cero (ZKP) | verificadas on-chain, sin revelar su identidad. Cifrado AES-256, almacenado en IPFS y gobernado por contratos inteligentes en Stellar.', pt: 'MedVault é infraestrutura soberana de prontuários médicos. Os médicos provam que estão autorizados com provas de conhecimento zero (ZKP) | verificadas on-chain, sem revelar sua identidade. Cifrado AES-256, armazenado no IPFS e governado por contratos inteligentes na Stellar.' },
     cta_vault:   { en: 'Open my Vault',    es: 'Abrir mi Bóveda',    pt: 'Abrir meu Cofre' },

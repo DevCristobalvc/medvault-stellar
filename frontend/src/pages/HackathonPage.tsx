@@ -193,7 +193,7 @@ const EVALUATION_CRITERIA = [
   { label: 'Integration depth & technical complexity', status: 'done', note: 'Soroban contract: 14 functions, 22 tests, require_auth enforcement, on-chain pubkey registry + ECIES (X25519), real Groth16 / BLS12-381 verifier (CAP-0052)' },
   { label: 'Impact on the Stellar ecosystem', status: 'done', note: 'Open Blockchain-as-a-Service protocol for medical data in LATAM' },
   { label: 'Customer discovery & validation', status: 'pending', note: '3 recorded interviews | see Demo & Interviews above' },
-  { label: 'Quality of testnet deployment', status: 'done', note: `Live on Stellar Testnet · ${CONTRACT_ID.slice(0, 12)}…` },
+  { label: 'Quality of deployment', status: 'done', note: `Live on Stellar Testnet (${CONTRACT_ID.slice(0, 12)}…) and Mainnet (${MAINNET_CONTRACT_ID.slice(0, 12)}…)` },
 ]
 
 function SectionTitle({ children }: { children: React.ReactNode }) {

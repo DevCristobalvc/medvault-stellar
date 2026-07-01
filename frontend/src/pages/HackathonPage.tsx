@@ -27,8 +27,9 @@ const MAINNET_EXPLORER_URL = `https://stellar.expert/explorer/public/contract/${
 
 // Paste the submission links here (YouTube / Drive / PDF). Empty = "Coming soon".
 const DECK_URL = '/deck.pdf'
-const DEMO_VIDEO_URL = ''
-const DISCOVERY_VIDEO_URL = ''
+const DEMO_VIDEO_URL = 'https://youtu.be/Tbvc7HYEZH8'
+const DISCOVERY_VIDEO_URL = 'https://youtu.be/cG7o4fjji1Q'
+const INTERVIEWS_PLAYLIST_URL = 'https://youtube.com/playlist?list=PLEjLL0wFAhRE&si=Ft1kqu4wCOBlKPc0'
 
 // Add news articles / studies that back the statistics. Empty = hidden.
 const SOURCES: { label: string; url: string }[] = [
@@ -192,7 +193,7 @@ const SOLUTIONS = [
 const EVALUATION_CRITERIA = [
   { label: 'Integration depth & technical complexity', status: 'done', note: 'Soroban contract: 14 functions, 22 tests, require_auth enforcement, on-chain pubkey registry + ECIES (X25519), real Groth16 / BLS12-381 verifier (CAP-0052)' },
   { label: 'Impact on the Stellar ecosystem', status: 'done', note: 'Open Blockchain-as-a-Service protocol for medical data in LATAM' },
-  { label: 'Customer discovery & validation', status: 'pending', note: '3 recorded interviews | see Demo & Interviews above' },
+  { label: 'Customer discovery & validation', status: 'done', note: 'Recorded interviews published | see Demo & Interviews above' },
   { label: 'Quality of deployment', status: 'done', note: `Live on Stellar Testnet (${CONTRACT_ID.slice(0, 12)}…) and Mainnet (${MAINNET_CONTRACT_ID.slice(0, 12)}…)` },
 ]
 
@@ -418,7 +419,7 @@ export function HackathonPage({ lang }: HackathonPageProps) {
               icon={Users}
               title={t('hackathon', 'discovery', lang)}
               desc={t('hackathon', 'discovery_desc', lang)}
-              url={DISCOVERY_VIDEO_URL}
+              url={INTERVIEWS_PLAYLIST_URL}
               label="Watch interviews"
               pending={pending}
             />

@@ -7,6 +7,11 @@ import { t, type Lang } from '@/lib/i18n'
 
 interface HomeProps { lang: Lang }
 
+const TESTNET_CONTRACT = 'CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3'
+const MAINNET_CONTRACT = 'CCNCFPI2MN4ZUYYQDT2KH25B7V45P6WXFRSQ5LHM4RSSKE75D2LLFFJA'
+const TESTNET_URL = `https://stellar.expert/explorer/testnet/contract/${TESTNET_CONTRACT}`
+const MAINNET_URL = `https://stellar.expert/explorer/public/contract/${MAINNET_CONTRACT}`
+
 const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1)
 
 const btnPrimary =
@@ -128,6 +133,19 @@ export function Home({ lang }: HomeProps) {
                 {t('hackathon', 'badge', lang)}
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
+
+              <div className="flex flex-col items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                <span>{lang === 'es' ? 'Contrato desplegado en' : lang === 'pt' ? 'Contrato implantado em' : 'Contract deployed on'}</span>
+                <div className="flex items-center gap-3">
+                  <a href={TESTNET_URL} target="_blank" rel="noreferrer" className="transition-colors hover:text-foreground">
+                    Testnet | {TESTNET_CONTRACT.slice(0, 6)}…{TESTNET_CONTRACT.slice(-4)}
+                  </a>
+                  <span className="text-border">·</span>
+                  <a href={MAINNET_URL} target="_blank" rel="noreferrer" className="transition-colors hover:text-foreground">
+                    Mainnet | {MAINNET_CONTRACT.slice(0, 6)}…{MAINNET_CONTRACT.slice(-4)}
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </section>

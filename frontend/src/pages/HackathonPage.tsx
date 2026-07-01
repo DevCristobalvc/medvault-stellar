@@ -22,6 +22,8 @@ const REPO_URL = 'https://github.com/DevCristobalvc/medvault-stellar'
 const DEMO_URL = 'https://medvault-stellar.vercel.app'
 const EXPLORER_URL = `https://stellar.expert/explorer/testnet/contract/${CONTRACT_ID}`
 const PREV_EXPLORER_URL = `https://stellar.expert/explorer/testnet/contract/${PREV_CONTRACT_ID}`
+const MAINNET_CONTRACT_ID = 'CCNCFPI2MN4ZUYYQDT2KH25B7V45P6WXFRSQ5LHM4RSSKE75D2LLFFJA'
+const MAINNET_EXPLORER_URL = `https://stellar.expert/explorer/public/contract/${MAINNET_CONTRACT_ID}`
 
 // Paste the submission links here (YouTube / Drive / PDF). Empty = "Coming soon".
 const DECK_URL = '/deck.pdf'
@@ -402,6 +404,14 @@ export function HackathonPage({ lang }: HackathonPageProps) {
               label="View on Stellar Expert"
               secondaryUrl={PREV_EXPLORER_URL}
               secondaryLabel={lang === 'es' ? 'Ver contrato versión anterior (v0.4)' : lang === 'pt' ? 'Ver contrato anterior (v0.4)' : 'View previous contract (v0.4)'}
+              pending={pending}
+            />
+            <ResourceCard
+              icon={ExternalLink}
+              title={lang === 'es' ? 'Contrato en Mainnet' : lang === 'pt' ? 'Contrato na Mainnet' : 'Mainnet contract'}
+              desc={`v0.5.1 · enum-hardened | ${MAINNET_CONTRACT_ID.slice(0, 20)}… live on Stellar Mainnet.`}
+              url={MAINNET_EXPLORER_URL}
+              label="View on Stellar Expert"
               pending={pending}
             />
             <ResourceCard

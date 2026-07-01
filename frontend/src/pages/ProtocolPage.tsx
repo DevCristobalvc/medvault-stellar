@@ -17,14 +17,17 @@ interface ProtocolPageProps { lang: Lang }
 
 const CONTRACT_ID = 'CAENHTIXAUOJ3AIWINZP3RRJQNADCLQ4HCYJZZV5TFYWRK2WU5VHKCK3'
 const PREV_CONTRACT_ID = 'CBYNTUAVZ4OSILWID7HE6AYF7FNOJTT2M77TZJ6GUU32VGBXUCMIUBBK'
+const MAINNET_CONTRACT_ID = 'CCNCFPI2MN4ZUYYQDT2KH25B7V45P6WXFRSQ5LHM4RSSKE75D2LLFFJA'
 const REPO_URL = 'https://github.com/DevCristobalvc/medvault-stellar'
 
 const expertUrl = (id: string) => `https://stellar.expert/explorer/testnet/contract/${id}`
+const expertUrlPublic = (id: string) => `https://stellar.expert/explorer/public/contract/${id}`
 
 const DEPLOYMENTS = [
   {
     id: CONTRACT_ID,
     tag: 'v0.5 · ECIES',
+    net: 'Testnet',
     current: true,
     note: {
       en: 'Current deployment. Adds register_pubkey / get_pubkey: an on-chain X25519 public-key directory enabling ECIES sharing (no copyable key). 14 exported functions.',
@@ -33,8 +36,20 @@ const DEPLOYMENTS = [
     },
   },
   {
+    id: MAINNET_CONTRACT_ID,
+    tag: 'v0.5.1 · enum-hardened',
+    net: 'Mainnet',
+    current: false,
+    note: {
+      en: 'Live on Stellar Mainnet (Public network). docType is locked to a closed enum (ClinicalHistory, LabResult, Imaging, Prescription, Other) so no free-text PII can leak to the public ledger. Same 14 functions, verified end-to-end on mainnet.',
+      es: 'En vivo en Stellar Mainnet (red principal). docType está fijado a un enum cerrado (ClinicalHistory, LabResult, Imaging, Prescription, Other) para que ningún texto libre con PII se filtre al ledger público. Las mismas 14 funciones, verificadas de extremo a extremo en mainnet.',
+      pt: 'Ao vivo na Stellar Mainnet (rede principal). docType está fixado num enum fechado (ClinicalHistory, LabResult, Imaging, Prescription, Other) para que nenhum texto livre com PII vaze para o ledger público. As mesmas 14 funções, verificadas de ponta a ponta na mainnet.',
+    },
+  },
+  {
     id: PREV_CONTRACT_ID,
     tag: 'v0.4 · KEM',
+    net: 'Testnet',
     current: false,
     note: {
       en: 'Previous deployment, kept for traceability. 12 functions, exercised end-to-end by integration_test.sh (register → grant → verify → key round-trip → log → revoke, proving require_auth on-chain).',
@@ -49,6 +64,7 @@ const REPOS = [
   { label: 'Soroban contract | lib.rs', sub: 'contracts/medvault · Rust', url: `${REPO_URL}/tree/Master/contracts/medvault` },
   { label: 'In-browser ZK prover | snarkjs + Poseidon', sub: 'frontend/src/lib/zkp · Groth16 over BLS12-381', url: `${REPO_URL}/tree/Master/frontend/src/lib/zkp` },
   { label: 'Contract on Stellar Expert (Testnet)', sub: CONTRACT_ID.slice(0, 24) + '…', url: `https://stellar.expert/explorer/testnet/contract/${CONTRACT_ID}` },
+  { label: 'Contract on Stellar Expert (Mainnet)', sub: MAINNET_CONTRACT_ID.slice(0, 24) + '…', url: `https://stellar.expert/explorer/public/contract/${MAINNET_CONTRACT_ID}` },
 ]
 
 const ZK_JWT_COPY = {
@@ -443,7 +459,7 @@ export function ProtocolPage({ lang }: ProtocolPageProps) {
             {DEPLOYMENTS.map((d) => (
               <a
                 key={d.id}
-                href={expertUrl(d.id)}
+                href={d.net === 'Mainnet' ? expertUrlPublic(d.id) : expertUrl(d.id)}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-start justify-between gap-3 rounded-lg border border-border px-4 py-3 hover:bg-muted/20 transition-colors"
@@ -451,7 +467,11 @@ export function ProtocolPage({ lang }: ProtocolPageProps) {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium">{d.tag}</span>
-                    {d.current ? (
+                    {d.net === 'Mainnet' ? (
+                      <Badge className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0">
+                        Mainnet
+                      </Badge>
+                    ) : d.current ? (
                       <Badge className="text-[10px] bg-green-50 text-green-700 border border-green-200 px-1.5 py-0">
                         {lang === 'en' ? 'Active' : lang === 'es' ? 'Activo' : 'Ativo'}
                       </Badge>
